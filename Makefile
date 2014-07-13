@@ -170,7 +170,7 @@ sym: $(TARGET).sym
 
 
 # Program the device.  
-program: $(TARGET).hex $(TARGET).eep
+old_program: $(TARGET).hex $(TARGET).eep
 	$(AVRDUDE) \
 		$(AVRDUDE_FLAGS) \
 		$(AVRDUDE_WRITE_FLASH) \
@@ -271,4 +271,15 @@ CFLAGS := \
 	-Wstrict-prototypes \
 	-std=gnu99 \
 	-nostdlib \
+
+program: cycle.hex
+	sudo ~/build/avrdude-6.1/avrdude \
+		-C ~/build/avrdude-6.1/avrdude.conf \
+		-P usb \
+		-V \
+		-v -v \
+		-p attiny85 \
+		-c avrispmkii \
+		-e \
+		-U flash:w:cycle.hex \
 
