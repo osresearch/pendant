@@ -1,5 +1,5 @@
 #include <avr/io.h>
-
+#include <avr/pgmspace.h>
 
 #define RED_PIN 1
 #define BLUE_PIN 3
@@ -35,6 +35,15 @@ void color(
 	green_off();
 }
 
+static const uint8_t palette[][3] PROGMEM =
+{
+	{ 128, 0, 0 },
+	{ 128, 128, 0 },
+	{ 0, 128, 0 },
+	{ 0, 128, 128 },
+	{ 128, 128, 128 },
+	{ 128, 0, 128 },
+};
 
 void
 __attribute__((section(".vectors")))
@@ -47,12 +56,40 @@ main(void)
 		| (1 << BLUE_PIN)
 		;
 
-	for(int i = 0 ; i < 255 ; i++)
-		color(i, i, i);
-	for(int i = 0 ; i < 255 ; i++)
-		color(i, 0, 0);
-	for(int i = 0 ; i < 255 ; i++)
-		color(0, i, 0);
-	for(int i = 0 ; i < 255 ; i++)
-		color(0, 0, i);
+	uintptr_t from = (uintptr_t) palette[0];
+	uintptr_t to = (uintptr_t) palette[1];
+	const uintptr_t end = from + sizeof(palette);
+
+	while (1)
+	{
+		uint8_t r0 = pgm_read_byte(from + 0);
+		uint8_t g0 = pgm_read_byte(from + 1);
+		uint8_t b0 = pgm_read_byte(from + 2);
+
+		uint8_t r1 = pgm_read_byte(to + 0);
+		uint8_t g1 = pgm_read_byte(to + 1);
+		uint8_t b1 = pgm_read_byte(to + 2);
+
+		int rdelta = r1 - r0;
+		int gdelta = g1 - g0;
+		int bdelta = b1 - b0;
+
+		for (uint8_t i = 0 ; i < 128 ; i++)
+		{
+			uint8_t r = r0 + (rdelta * i) / 128;
+			uint8_t g = g0 + (gdelta * i) / 128;
+			uint8_t b = b0 + (bdelta * i) / 128;
+			color(r, g, b);
+		}
+
+		// advance our colors, wrapping if we hit the
+		// end of the palette list
+		from += 3;
+		to += 3;
+
+		if (from >= end)
+			from = (uintptr_t) palette;
+		if (to >= end)
+			to = (uintptr_t) palette;
+	}
 }
