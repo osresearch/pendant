@@ -233,6 +233,15 @@ Based on the following sources:&lt;p&gt;
 <wire x1="2.5" y1="5.2" x2="2.5" y2="0" width="0.005" layer="20"/>
 <wire x1="2.5" y1="0" x2="6" y2="0" width="0.005" layer="20"/>
 </package>
+<package name="8TH-SQUARE">
+<smd name="P1" x="-2.1" y="1.6" dx="1" dy="3" layer="1"/>
+<smd name="P2" x="2.1" y="1.6" dx="1" dy="3" layer="1"/>
+<wire x1="-4" y1="0" x2="-1.55" y2="0" width="0.005" layer="20"/>
+<wire x1="-1.55" y1="0" x2="-1.55" y2="3.2" width="0.005" layer="20"/>
+<wire x1="-1.55" y1="3.2" x2="1.55" y2="3.2" width="0.005" layer="20"/>
+<wire x1="1.55" y1="3.2" x2="1.55" y2="0" width="0.005" layer="20"/>
+<wire x1="1.55" y1="0" x2="4" y2="0" width="0.005" layer="20"/>
+</package>
 </packages>
 <symbols>
 <symbol name="USB-MICRO">
@@ -293,6 +302,15 @@ Based on the following sources:&lt;p&gt;
 </gates>
 <devices>
 <device name="" package="5MM-SQUARE">
+<connects>
+<connect gate="G$1" pin="P$1" pad="P1"/>
+<connect gate="G$1" pin="P$2" pad="P2"/>
+</connects>
+<technologies>
+<technology name=""/>
+</technologies>
+</device>
+<device name="8TH-INCH" package="8TH-SQUARE">
 <connects>
 <connect gate="G$1" pin="P$1" pad="P1"/>
 <connect gate="G$1" pin="P$2" pad="P2"/>
@@ -4330,7 +4348,7 @@ new: Attribute TP_SIGNAL_NAME&lt;br&gt;
 <part name="H2" library="holes" deviceset="MOUNT-PAD-ROUND" device="5.0"/>
 <part name="TP6" library="testpad" deviceset="TP" device="PAD1-13"/>
 <part name="GND2" library="supply1" deviceset="GND" device=""/>
-<part name="U$2" library="pendant" deviceset="MAGNET" device=""/>
+<part name="U$2" library="pendant" deviceset="MAGNET" device="8TH-INCH" value="MAGNET8TH-INCH"/>
 </parts>
 <sheets>
 <sheet>
