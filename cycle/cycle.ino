@@ -1,25 +1,22 @@
-#include <avr/io.h>
-#include <avr/pgmspace.h>
+#define RED_PIN 0
+#define BLUE_PIN 1
+#define GREEN_PIN 2
 
-#define RED_PIN 1
-#define BLUE_PIN 3
-#define GREEN_PIN 4
+static inline void red_on(void)   { PORTB |= 1 << RED_PIN; }
+static inline void green_on(void) { PORTB |= 1 << GREEN_PIN; }
+static inline void blue_on(void)  { PORTB |= 1 << BLUE_PIN; }
 
-static inline void red_off(void)   { PORTB |= 1 << RED_PIN; }
-static inline void green_off(void) { PORTB |= 1 << GREEN_PIN; }
-static inline void blue_off(void)  { PORTB |= 1 << BLUE_PIN; }
-
-static inline void red_on(void)   { PORTB &= ~(1 << RED_PIN); }
-static inline void green_on(void) { PORTB &= ~(1 << GREEN_PIN); }
-static inline void blue_on(void)  { PORTB &= ~(1 << BLUE_PIN); }
+static inline void red_off(void)   { PORTB &= ~(1 << RED_PIN); }
+static inline void green_off(void) { PORTB &= ~(1 << GREEN_PIN); }
+static inline void blue_off(void)  { PORTB &= ~(1 << BLUE_PIN); }
 
 static inline void all_off(void)
 {
-	PORTB |= 0
+	PORTB &= ~(0
 		| ( 1 << RED_PIN )
 		| ( 1 << GREEN_PIN )
 		| ( 1 << BLUE_PIN )
-		;
+		);
 }
 
 
@@ -94,7 +91,7 @@ static const uint8_t palette[][4] PROGMEM =
 
 
 static void
-delay(unsigned length)
+old_delay(unsigned length)
 {
 	while (length--)
 	{
@@ -107,17 +104,21 @@ delay(unsigned length)
 
 
 void
-__attribute__((section(".vectors")))
-main(void)
+setup()
 {
-	// make all three output pins outputs
-	DDRB |= 0
-		| (1 << RED_PIN)
-		| (1 << GREEN_PIN)
-		| (1 << BLUE_PIN)
-		;
+  pinMode(0, OUTPUT);
+  pinMode(1, OUTPUT);
+  pinMode(2, OUTPUT);
+  digitalWrite(0, 0);
+  digitalWrite(1, 0);
+  digitalWrite(2, 0);
+}
 
-	uintptr_t from = (uintptr_t) palette[0];
+
+void
+loop()
+{
+  	uintptr_t from = (uintptr_t) palette[0];
 	uintptr_t to = (uintptr_t) palette[1];
 	const uintptr_t end = from + sizeof(palette);
 
@@ -142,13 +143,17 @@ main(void)
 			uint8_t b = b0 + (bdelta * i) / 128;
 
 			// save battery -- dim the LED
-			r /= 2;
-			g /= 2;
-			b /= 2;
+			r /= 1;
+			g /= 1;
+			b /= 1;
 
 			color(r, g, b);
-			delay(64);
+			delay(1);
 		}
+if (random(20) == 0) {
+  for(int j=0 ; j < 10 ; j++) color(128,128,128); 
+}
+
 
 		// advance our colors, wrapping if we hit the
 		// end of the palette list
