@@ -26,15 +26,25 @@ void color(
 	uint8_t b
 )
 {
-	if (r > 0) red_on();
-	if (g > 0) green_on();
-	if (b > 0) blue_on();
-
-	for (unsigned i = 0 ; i < 255 ; i++)
+	for (unsigned i = 0 ; i < 512 ; i++)
 	{
-		if (r == i) red_off();
-		if (g == i) green_off();
-		if (b == i) blue_off();
+		if (r > i)
+			red_on();
+		else
+			red_off();
+		red_off();
+
+		if (g > i)
+			green_on();
+		else
+			green_off();
+		green_off();
+
+		if (b > i)
+			blue_on();
+		else
+			blue_off();
+		blue_off();
 	}
 
 	all_off();
@@ -42,7 +52,7 @@ void color(
 
 static const uint8_t palette[][4] PROGMEM =
 {
-#if 0
+#if 1
 	{ 128,   0,   0 },
 	{ 128, 128,   0 },
 	{   0, 128,   0 },
@@ -60,7 +70,7 @@ static const uint8_t palette[][4] PROGMEM =
 	{   0,   0, 100 },
 #endif
 
-#if 1
+#if 0
 	//http://www.colourlovers.com/palette/1473/Ocean_Five
 	{ 0, 160, 176 },
 	{ 0, 160, 176 },
@@ -106,23 +116,44 @@ old_delay(unsigned length)
 void
 setup()
 {
-  pinMode(0, OUTPUT);
-  pinMode(1, OUTPUT);
-  pinMode(2, OUTPUT);
-  digitalWrite(0, 0);
-  digitalWrite(1, 0);
-  digitalWrite(2, 0);
+	pinMode(0, OUTPUT);
+	pinMode(1, OUTPUT);
+	pinMode(2, OUTPUT);
+	all_off();
 }
 
+uintptr_t from = (uintptr_t) palette[0];
+uintptr_t to = (uintptr_t) palette[1];
+const uintptr_t end = from + sizeof(palette);
 
 void
 loop()
 {
-  	uintptr_t from = (uintptr_t) palette[0];
-	uintptr_t to = (uintptr_t) palette[1];
-	const uintptr_t end = from + sizeof(palette);
-
 	while (1)
+	{
+		for (int i = 0 ; i < 64 ; i++)
+		{
+			color(i,0,0);
+			delay(10);
+		}
+		for (int i = 0 ; i < 64 ; i++)
+		{
+			color(0,i,0);
+			delay(10);
+		}
+		for (int i = 0 ; i < 64 ; i++)
+		{
+			color(0,0,i);
+			delay(10);
+		}
+		for (int i = 0 ; i < 64 ; i++)
+		{
+			color(i,i,0);
+			delay(10);
+		}
+	}
+
+	//while (1)
 	{
 		int r0 = pgm_read_byte(from + 0);
 		int g0 = pgm_read_byte(from + 1);
@@ -143,17 +174,13 @@ loop()
 			uint8_t b = b0 + (bdelta * i) / 128;
 
 			// save battery -- dim the LED
-			r /= 1;
-			g /= 1;
-			b /= 1;
+			r /= 2;
+			g /= 2;
+			b /= 2;
 
 			color(r, g, b);
-			delay(1);
+			delay(10);
 		}
-if (random(20) == 0) {
-  for(int j=0 ; j < 10 ; j++) color(128,128,128); 
-}
-
 
 		// advance our colors, wrapping if we hit the
 		// end of the palette list
