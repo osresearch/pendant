@@ -1,55 +1,77 @@
-#define RED_PIN 0
-#define BLUE_PIN 1
-#define GREEN_PIN 2
+/** \file
+ * NeoPixel based pendant.
+ * Uses a Gemma-like bootloader and a single through-hole NeoPixel.
+ *
+ * Due to a mistake in using a common cathode RGB LED, the
+ * LED has to be powered via a data pin.
+ *
+ * 5mm through hole:
+ * In   +5v
+ *           Gnd Out
+ * PB0  PB1  GND  Ignore
+ *
+ */
+#include <Adafruit_NeoPixel.h>
 
-static inline void red_on(void)   { PORTB |= 1 << RED_PIN; }
-static inline void green_on(void) { PORTB |= 1 << GREEN_PIN; }
-static inline void blue_on(void)  { PORTB |= 1 << BLUE_PIN; }
+#define POWER_PIN 1
+#define PIXEL_PIN 0
 
-static inline void red_off(void)   { PORTB &= ~(1 << RED_PIN); }
-static inline void green_off(void) { PORTB &= ~(1 << GREEN_PIN); }
-static inline void blue_off(void)  { PORTB &= ~(1 << BLUE_PIN); }
+Adafruit_NeoPixel pixel = Adafruit_NeoPixel(
+	1,
+	PIXEL_PIN,
+	NEO_GRB + NEO_KHZ800
+);
 
-static inline void all_off(void)
+
+void setup()
 {
-	PORTB &= ~(0
-		| ( 1 << RED_PIN )
-		| ( 1 << GREEN_PIN )
-		| ( 1 << BLUE_PIN )
-		);
+	// turn on the pixel by bringing the power pin high
+	pinMode(POWER_PIN, OUTPUT);
+	digitalWrite(POWER_PIN, 1);
+
+	// Now start up the pixels
+	pixel.begin();
 }
 
 
-void color(
-	uint8_t r,
-	uint8_t g,
-	uint8_t b
-)
+void loop()
 {
-	for (unsigned i = 0 ; i < 512 ; i++)
+while(1)
+{
+	for (int i = 0 ; i < 64 ; i++)
 	{
-		if (r > i)
-			red_on();
-		else
-			red_off();
-		red_off();
-
-		if (g > i)
-			green_on();
-		else
-			green_off();
-		green_off();
-
-		if (b > i)
-			blue_on();
-		else
-			blue_off();
-		blue_off();
+		pixel.setPixelColor(0, i, 0, 0);
+		pixel.show();
+		delay(10);
 	}
-
-	all_off();
+	for (int i = 0 ; i < 64 ; i++)
+	{
+		pixel.setPixelColor(0, 64-i, 0, 0);
+		pixel.show();
+		delay(10);
+	}
+}
+	for (int i = 0 ; i < 255 ; i++)
+	{
+		pixel.setPixelColor(0, 0, i, 0);
+		pixel.show();
+		delay(10);
+	}
+	for (int i = 0 ; i < 255 ; i++)
+	{
+		pixel.setPixelColor(0, 0, 0, i);
+		pixel.show();
+		delay(10);
+	}
+	for (int i = 0 ; i < 255 ; i++)
+	{
+		pixel.setPixelColor(0, i, i, i);
+		pixel.show();
+		delay(10);
+	}
 }
 
+#if 0
 static const uint8_t palette[][4] PROGMEM =
 {
 #if 1
@@ -99,29 +121,6 @@ static const uint8_t palette[][4] PROGMEM =
 #endif
 };
 
-
-static void
-old_delay(unsigned length)
-{
-	while (length--)
-	{
-		asm("nop"); asm("nop"); asm("nop"); asm("nop");
-		asm("nop"); asm("nop"); asm("nop"); asm("nop");
-		asm("nop"); asm("nop"); asm("nop"); asm("nop");
-		asm("nop"); asm("nop"); asm("nop"); asm("nop");
-	}
-}
-
-
-void
-setup()
-{
-	pinMode(0, OUTPUT);
-	pinMode(1, OUTPUT);
-	pinMode(2, OUTPUT);
-	all_off();
-}
-
 uintptr_t from = (uintptr_t) palette[0];
 uintptr_t to = (uintptr_t) palette[1];
 const uintptr_t end = from + sizeof(palette);
@@ -129,7 +128,7 @@ const uintptr_t end = from + sizeof(palette);
 void
 loop()
 {
-	while (1)
+	//while (1)
 	{
 		for (int i = 0 ; i < 64 ; i++)
 		{
@@ -153,6 +152,7 @@ loop()
 		}
 	}
 
+/*
 	//while (1)
 	{
 		int r0 = pgm_read_byte(from + 0);
@@ -192,4 +192,6 @@ loop()
 		if (to >= end)
 			to = (uintptr_t) palette[0];
 	}
+*/
 }
+#endif
