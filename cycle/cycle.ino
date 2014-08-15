@@ -40,17 +40,17 @@ void ramp(
 	int b
 )
 {
-	for (int i = 0 ; i < 256 ; i++)
+	for (int i = 0 ; i < 256 ; i+=8)
 	{
 		pixel.setPixelColor(0, (i*r)/256, (i*g)/256, (i*b)/256);
 		pixel.show();
-		delay(5);
+		delay(30);
 	}
-	for (int i = 255 ; i >= 0 ; i--)
+	for (int i = 255 ; i >= 0 ; i-=8)
 	{
 		pixel.setPixelColor(0, (i*r)/256, (i*g)/256, (i*b)/256);
 		pixel.show();
-		delay(5);
+		delay(30);
 	}
 }
 
@@ -59,11 +59,11 @@ void loop()
 	while(1)
 	{
 		ramp(32,0,0);
-		ramp(32,32,0);
-		ramp(0,32,0);
-		ramp(0,32,32);
+		//ramp(32,32,0);
+		//ramp(0,16,0);
+		//ramp(0,32,32);
 		ramp(0,0,32);
-		ramp(32,0,32);
+		//ramp(32,0,32);
 	}
 }
 
