@@ -34,40 +34,36 @@ void setup()
 }
 
 
-void loop()
+void ramp(
+	int r,
+	int g,
+	int b
+)
 {
-while(1)
-{
-	for (int i = 0 ; i < 64 ; i++)
+	for (int i = 0 ; i < 256 ; i++)
 	{
-		pixel.setPixelColor(0, i, 0, 0);
+		pixel.setPixelColor(0, (i*r)/256, (i*g)/256, (i*b)/256);
 		pixel.show();
-		delay(10);
+		delay(5);
 	}
-	for (int i = 0 ; i < 64 ; i++)
+	for (int i = 255 ; i >= 0 ; i--)
 	{
-		pixel.setPixelColor(0, 64-i, 0, 0);
+		pixel.setPixelColor(0, (i*r)/256, (i*g)/256, (i*b)/256);
 		pixel.show();
-		delay(10);
+		delay(5);
 	}
 }
-	for (int i = 0 ; i < 255 ; i++)
+
+void loop()
+{
+	while(1)
 	{
-		pixel.setPixelColor(0, 0, i, 0);
-		pixel.show();
-		delay(10);
-	}
-	for (int i = 0 ; i < 255 ; i++)
-	{
-		pixel.setPixelColor(0, 0, 0, i);
-		pixel.show();
-		delay(10);
-	}
-	for (int i = 0 ; i < 255 ; i++)
-	{
-		pixel.setPixelColor(0, i, i, i);
-		pixel.show();
-		delay(10);
+		ramp(32,0,0);
+		ramp(32,32,0);
+		ramp(0,32,0);
+		ramp(0,32,32);
+		ramp(0,0,32);
+		ramp(32,0,32);
 	}
 }
 
