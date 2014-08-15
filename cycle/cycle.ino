@@ -3,7 +3,9 @@
  * Uses a Gemma-like bootloader and a single through-hole NeoPixel.
  *
  * Due to a mistake in using a common cathode RGB LED, the
- * LED has to be powered via a data pin.
+ * LED has to be powered via a data pin.  To save battery life
+ * and ensure operation as the battery decays, we slow the clock
+ * to 2 MHz.,
  *
  * 5mm through hole:
  * In   +5v
@@ -25,6 +27,10 @@ Adafruit_NeoPixel pixel = Adafruit_NeoPixel(
 
 void setup()
 {
+	// switch the clock sel to 1/4, which should be 2 MHz.
+	CLKPR = 0x80;
+	CLKPR = 0x02; // clk/4
+
 	// turn on the pixel by bringing the power pin high
 	pinMode(POWER_PIN, OUTPUT);
 	digitalWrite(POWER_PIN, 1);
@@ -59,11 +65,11 @@ void loop()
 	while(1)
 	{
 		ramp(32,0,0);
-		//ramp(32,32,0);
-		//ramp(0,16,0);
-		//ramp(0,32,32);
+		ramp(32,32,0);
+		ramp(0,16,0);
+		ramp(0,32,32);
 		ramp(0,0,32);
-		//ramp(32,0,32);
+		ramp(32,0,32);
 	}
 }
 
