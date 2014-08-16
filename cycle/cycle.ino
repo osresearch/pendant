@@ -14,6 +14,10 @@
  *
  */
 #include <Adafruit_NeoPixel.h>
+#include <avr/power.h>
+#include <avr/sleep.h>
+#include <avr/wdt.h>
+
 
 #define POWER_PIN 1
 #define PIXEL_PIN 0
@@ -23,6 +27,38 @@ Adafruit_NeoPixel pixel = Adafruit_NeoPixel(
 	PIXEL_PIN,
 	NEO_GRB + NEO_KHZ800
 );
+
+
+ISR(WDT_vect)
+{
+	wdt_disable();
+}
+
+/** Go into a deep sleep for 15ms */
+void
+deep_sleep()
+{
+	set_sleep_mode(SLEEP_MODE_IDLE);
+	//set_sleep_mode(SLEEP_MODE_PWR_SAVE); // doesn't work
+
+	// enables the sleep bit in the mcucr register
+	// so sleep is possible. just a safety pin 
+	sleep_enable();
+  
+	// turn off some of the things
+	power_adc_disable();
+
+	// enable the watch dog
+	wdt_reset();
+	wdt_enable(WDTO_15MS);
+	sleep_mode();
+
+	// we're back! disable sleep (the ISR turns off the watchdog)
+	sleep_disable();
+
+	//power_all_enable();
+}
+
 
 
 void setup()
@@ -50,13 +86,17 @@ void ramp(
 	{
 		pixel.setPixelColor(0, (i*r)/256, (i*g)/256, (i*b)/256);
 		pixel.show();
-		delay(30);
+		deep_sleep();
+		deep_sleep();
+		//delay(10);
 	}
 	for (int i = 255 ; i >= 0 ; i-=8)
 	{
 		pixel.setPixelColor(0, (i*r)/256, (i*g)/256, (i*b)/256);
 		pixel.show();
-		delay(30);
+		deep_sleep();
+		deep_sleep();
+		//delay(10);
 	}
 }
 
