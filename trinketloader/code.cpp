@@ -1,4 +1,5 @@
 #include "optiLoader.h"
+#define VERBOSE 0
 
 /*
  * Bootload images.
