@@ -37,7 +37,7 @@ byte pageBuffer[128];		       /* One page of flash */
 #define BUTTON 10
 
 void setup () {
-  Serial.begin(9600);			/* Initialize serial for status msgs */
+  Serial.begin(115200);			/* Initialize serial for status msgs */
   Serial.println("\nTrinket loader!");
 }
 
