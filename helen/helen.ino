@@ -1,10 +1,10 @@
 /** \file
- * Charlieplex demo.
+ * HELEN board charlieplexing setup.
  *
- * This sketch uses Charlieplexing with the three digital output pins
- * on the Adafruit GEMA to drive six LEDs with PWM.
+ * This sketch uses Charlieplexing with four digital output pins
+ * on the HELEN board to drive 12 LEDs with PWM.
  *
- * More info: https://trmm.net/Charlieplex
+ * More info: https://trmm.net/HELEN and  https://trmm.net/Charlieplex
  */
 
 
@@ -112,16 +112,38 @@ void chase1(void)
 
 void chase2()
 {
-	for(uint8_t i = 0 ; i < NUM_LEDS; i++)
+	uint8_t x1 = 0;
+	uint8_t x2 = 6;
+	uint8_t t1 = 0;
+	uint8_t t2 = 0;
+
+	while (1)
 	{
-		for(uint8_t delay = 0 ; delay < 30 ; delay++)
+		if (fb[x1] < 200)
+			fb[x1] += 16;
+		if (fb[x2] < 200)
+			fb[x2] += 6;
+
+		if (t1++ > 37)
 		{
-			if (fb[i] < 200)
-				fb[i] += 16;
-			draw();
-			if ((delay & 3) == 0)
-				decay(8);
+			if (x1 == NUM_LEDS-1)
+				x1 = 0;
+			else
+				x1++;
+			t1 = 0;
 		}
+
+		if (t2++ > 17)
+		{
+			if (x2 == NUM_LEDS-1)
+				x2 = 0;
+			else
+				x2++;
+			t2 = 0;
+		}
+
+		draw();
+		decay(1);
 	}
 }
 
