@@ -205,9 +205,60 @@ void soft_twinkle()
 	}
 }
 
+
+static void
+total_random()
+{
+	uint8_t max = 128;
+	uint8_t dir[NUM_LEDS];
+	uint8_t speed[NUM_LEDS];
+
+	for(uint8_t i = 0 ; i < NUM_LEDS ; i++)
+	{
+		const uint8_t s = random(3)+1;
+
+		fb[i] = random(max-s);
+		dir[i] = 1;
+		speed[i] = s;
+	}
+
+	while (random(10000) > 1)
+	{
+		for(uint8_t i = 0 ; i < NUM_LEDS ; i++)
+		{
+			const uint8_t b = fb[i];
+			const uint8_t s = speed[i];
+			if (dir[i])
+			{
+				if (b+s > max)
+				{
+					dir[i] = 0;
+				} else {
+					fb[i] = b + s;
+				}
+			} else {
+				if (b < s)
+				{
+					dir[i] = 1;
+				} else {
+					fb[i] = b - s;
+				}
+			}
+		}
+		draw();
+		delay(10);
+	}
+			
+}
+
+
 void loop()
+{
+if(0)
 {
 	chase2();
 	twinkle();
 	soft_twinkle();
+}
+	total_random();
 }
