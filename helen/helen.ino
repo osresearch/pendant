@@ -68,20 +68,31 @@ void draw()
 }
 
 
-static void
+static inline void
 decay(
-	const uint8_t speed
+	const uint8_t speed,
+	const uint8_t min = 0
 )
 {
-	for(int i = 0 ; i < NUM_LEDS ; i++)
+	for(uint8_t i = 0 ; i < NUM_LEDS ; i++)
 	{
-		if (fb[i] > speed)
+		if (fb[i] > min+speed)
 			fb[i] -= speed;
-		else
-			fb[i] = 0;
 	}
 }
 
+static inline void
+decay_up(
+	const uint8_t speed,
+	const uint8_t min
+)
+{
+	for(uint8_t i = 0 ; i < NUM_LEDS ; i++)
+	{
+		if (fb[i] < min)
+			fb[i] += speed;
+	}
+}
 
 void chase1(void)
 {
@@ -110,14 +121,15 @@ void chase1(void)
 }
 
 
-void chase2()
+static void
+chase2()
 {
 	uint8_t x1 = 0;
 	uint8_t x2 = 6;
 	uint8_t t1 = 0;
 	uint8_t t2 = 0;
 
-	while (1)
+	while (random(10000) > 1)
 	{
 		if (fb[x1] < 200)
 			fb[x1] += 16;
@@ -135,10 +147,10 @@ void chase2()
 
 		if (t2++ > 17)
 		{
-			if (x2 == NUM_LEDS-1)
-				x2 = 0;
+			if (x2 == 0)
+				x2 = NUM_LEDS-1;
 			else
-				x2++;
+				x2--;
 			t2 = 0;
 		}
 
@@ -147,7 +159,55 @@ void chase2()
 	}
 }
 
+
+static
+void twinkle()
+{
+	while (random(10000) > 1)
+	{
+		if (random(200) < 2)
+		{
+			const uint8_t i = random(NUM_LEDS);
+			if (i < NUM_LEDS)
+				fb[i] = 200;
+		}
+
+		draw();
+		decay(1);
+	}
+}
+
+static
+void soft_twinkle()
+{
+	const uint8_t min = 8;
+	const uint8_t speed = 1;
+
+	while (random(10000) > 1)
+	{
+		uint8_t chance = random(200);
+		const uint8_t i = random(NUM_LEDS);
+		if (chance < 1)
+		{
+			if (i < NUM_LEDS)
+				fb[i] = 200;
+		} else
+		if (chance < 5)
+		{
+			if (i < NUM_LEDS)
+				fb[i] = 0;
+		}
+
+		draw();
+		decay(speed, min);
+		if (random(20) == 0)
+			decay_up(1, min);
+	}
+}
+
 void loop()
 {
 	chase2();
+	twinkle();
+	soft_twinkle();
 }
