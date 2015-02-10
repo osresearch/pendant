@@ -240,7 +240,7 @@ void soft_twinkle()
 		decay(speed, min);
 		if (random(5) == 0)
 			decay_up(1, min);
-		deep_sleep();
+		delay(2); // deep_sleep();
 	}
 }
 
