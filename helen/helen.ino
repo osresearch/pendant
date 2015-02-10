@@ -7,6 +7,49 @@
  * More info: https://trmm.net/HELEN and  https://trmm.net/Charlieplex
  */
 
+#include <avr/power.h>
+#include <avr/sleep.h>
+#include <avr/wdt.h>
+
+ISR(WDT_vect)
+{
+	wdt_disable();
+}
+
+/** Go into a deep sleep for 15ms */
+void
+deep_sleep()
+{
+	set_sleep_mode(SLEEP_MODE_IDLE);
+	//set_sleep_mode(SLEEP_MODE_PWR_SAVE); // doesn't work
+
+	// enables the sleep bit in the mcucr register
+	// so sleep is possible. just a safety pin 
+	sleep_enable();
+  
+	// turn off some of the things
+	power_adc_disable();
+
+	// enable the watch dog
+	wdt_reset();
+	wdt_enable(WDTO_15MS);
+	sleep_mode();
+
+	// we're back! disable sleep (the ISR turns off the watchdog)
+	sleep_disable();
+
+	//power_all_enable();
+}
+
+
+
+void setup()
+{
+	// switch the clock sel to 1/4, which should be 2 MHz.
+	CLKPR = 0x80;
+	CLKPR = 0x02; // clk/4
+	off();
+}
 
 #define NUM_LEDS 12 // Maximum with 3 output pins
 
@@ -46,11 +89,6 @@ void on(int n)
 }
 
 static uint8_t fb[NUM_LEDS];
-
-void setup()
-{
-  off();
-}
 
 
 void draw()
@@ -183,25 +221,26 @@ void soft_twinkle()
 	const uint8_t min = 8;
 	const uint8_t speed = 1;
 
-	while (random(10000) > 1)
+	while (1) //random(10000) > 1)
 	{
-		uint8_t chance = random(200);
+		const uint8_t chance = random(100);
 		const uint8_t i = random(NUM_LEDS);
 		if (chance < 1)
 		{
 			if (i < NUM_LEDS)
-				fb[i] = 200;
+				fb[i] = 100;
 		} else
 		if (chance < 5)
 		{
 			if (i < NUM_LEDS)
-				fb[i] = 0;
+				fb[i] = 1;
 		}
 
 		draw();
 		decay(speed, min);
-		if (random(20) == 0)
+		if (random(5) == 0)
 			decay_up(1, min);
+		deep_sleep();
 	}
 }
 
@@ -209,13 +248,13 @@ void soft_twinkle()
 static void
 total_random()
 {
-	uint8_t max = 128;
+	uint8_t max = 64;
 	uint8_t dir[NUM_LEDS];
 	uint8_t speed[NUM_LEDS];
 
 	for(uint8_t i = 0 ; i < NUM_LEDS ; i++)
 	{
-		const uint8_t s = random(3)+1;
+		const uint8_t s = random(2)+1;
 
 		fb[i] = random(max-s);
 		dir[i] = 1;
@@ -224,10 +263,15 @@ total_random()
 
 	while (random(10000) > 1)
 	{
+		uint16_t r = random(10000);
 		for(uint8_t i = 0 ; i < NUM_LEDS ; i++)
 		{
 			const uint8_t b = fb[i];
 			const uint8_t s = speed[i];
+			r >>= 1;
+			if (r & 1)
+				continue;
+
 			if (dir[i])
 			{
 				if (b+s > max)
@@ -246,9 +290,37 @@ total_random()
 			}
 		}
 		draw();
-		delay(10);
+		delay(15);
 	}
 			
+}
+
+
+static void
+chase_smooth()
+{
+	const uint8_t speed = 1;
+	int t = 0;
+
+	while (++t < NUM_LEDS*64)
+	{
+		for(int i = 0 ; i < NUM_LEDS ; i++)
+		{
+			int x = i * 64;
+			int dt = t - x;
+
+			if (dt < -128 || dt > 128)
+				fb[i] = 0;
+			else
+			if (dt < 0)
+				fb[i] = 64+dt/2;
+			else
+				fb[i] = 64-dt/2;
+		}
+
+		draw();
+		//delay(10);
+	}
 }
 
 
@@ -258,7 +330,8 @@ if(0)
 {
 	chase2();
 	twinkle();
-	soft_twinkle();
-}
+	chase_smooth();
 	total_random();
+}
+	soft_twinkle();
 }
