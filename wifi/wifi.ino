@@ -173,10 +173,14 @@ void wifi_create(int leader_id)
 {
 	WiFi.mode(WIFI_AP_STA);
 	String ssid = wifi_prefix + String(leader_id);
+	IPAddress ip(192,168,4,1);
+	IPAddress gw(192,168,4,1);
+	IPAddress subnet(255,255,255,0);
 	WiFi.softAP(ssid.c_str());
+	WiFi.config(ip, gw, subnet);
 	wifi_mode = MODE_CANDIDATE;
 
-	Serial.println("Candidate " + ssid);
+	Serial.println("Candidate " + ssid + " " + WiFi.localIP());
 }
 
 
