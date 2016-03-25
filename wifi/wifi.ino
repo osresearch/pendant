@@ -15,7 +15,7 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <Adafruit_NeoPixel.h>
-#include <Adafruit_ADXL345_U.h>
+//#include <Adafruit_ADXL345_U.h>
 
 // LED matrix display
 #define WIDTH 8
@@ -31,8 +31,7 @@ int mode;
 float fb[WIDTH][HEIGHT][3];
 
 // i2c connected accelerometer
-Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
-int rc;
+//Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
 
 // Network config
 #define UDP_PORT 9999
@@ -50,8 +49,12 @@ int wifi_mode = 0; // scanning, joined, leader
 int last_scan = 0; // periodic scanning timer, ms of last scan
 int wifi_scans = 0; // how many scans have we done?
 
+#define BEACON_INTERVAL 1000
+int last_beacon;
+
+
 // leaders will start their network names with this prefix
-String wifi_prefix = "NYCR-";
+String wifi_prefix = "blinky-";
 
 
 void setup()
@@ -68,7 +71,7 @@ void setup()
 	leds.begin();
 	leds.setBrightness(32);
 
-	rc = accel.begin();
+	//rc = accel.begin();
 
 
 	// setup the serial port and also let the RTOS print
@@ -125,11 +128,19 @@ int rescan_network()
 			int leader_id = idstr.toInt();
 			Serial.print(" leader ");
 			Serial.print(leader_id);
-			if (min_leader > leader_id)
+			if (min_leader > leader_id || min_leader == -1)
 				min_leader = leader_id;
 		}
 
 		Serial.println();
+	}
+
+	if (min_leader < 0)
+	{
+		Serial.println("!!! No leaders found");
+	} else {
+		Serial.print("Possible leader: ");
+		Serial.println(min_leader);
 	}
 
 	return min_leader;
@@ -146,7 +157,10 @@ void wifi_follow(int leader_id)
 	{
 		wifi_mode = MODE_FOLLOWER;
 		Serial.print("Followed ");
-		Serial.println(ssid);
+		Serial.print(ssid);
+		Serial.print(": ");
+		Serial.println(WiFi.localIP());
+	
 	} else {
 		wifi_mode = MODE_SCANNING;
 		Serial.print("ERROR FOLLOWING: ");
@@ -203,11 +217,65 @@ void wifi_candidate()
 	}
 
 	// check to see if we have any followers
+	int len = udp.parsePacket();
+	if (len)
+	{
+		IPAddress ip = udp.remoteIP();
+		Serial.print(ip);
+		Serial.print(' ');
+		Serial.print(len);
+		udp.read(buf, sizeof(buf));
+		for(int i = 0 ; i < len ; i++)
+		{
+			Serial.print(' ');
+			Serial.print(buf[i], HEX);
+		}
+
+		Serial.println();
+	}
+
+	int now = millis();
+	if (now - last_beacon > BEACON_INTERVAL)
+	{
+		last_beacon = now;
+		IPAddress bcast = WiFi.localIP();
+		bcast[3] = 255;
+		udp.beginPacket(bcast, UDP_PORT);
+		udp.write(String(now).c_str());
+		udp.endPacket();
+	}
 }
 
 void wifi_follower()
 {
-	// nothing to do yet
+	// did we get a packet from the leader?
+	int len = udp.parsePacket();
+	if (len)
+	{
+		IPAddress ip = udp.remoteIP();
+		Serial.print(ip);
+		Serial.print(' ');
+		Serial.print(len);
+		udp.read(buf, sizeof(buf));
+		for(int i = 0 ; i < len ; i++)
+		{
+			Serial.print(' ');
+			Serial.print(buf[i], HEX);
+		}
+
+		Serial.println();
+	}
+
+	int now = millis();
+	if (now - last_beacon > BEACON_INTERVAL)
+	{
+		last_beacon = now;
+		IPAddress bcast = WiFi.localIP();
+		bcast[3] = 255;
+		udp.beginPacket(bcast, UDP_PORT);
+		udp.write(String(now).c_str());
+		udp.endPacket();
+	}
 }
 
 
@@ -258,32 +326,6 @@ void loop()
 	Serial.println();
 */
 	
-	// did we get a packet?
-	int len = udp.parsePacket();
-	if (len)
-	{
-		Serial.print(len);
-		udp.read(buf, sizeof(buf));
-		for(int i = 0 ; i < len ; i++)
-		{
-			Serial.print(' ');
-			Serial.print(buf[i], HEX);
-		}
-
-		Serial.println();
-
-		// flash white
-		for(int x = 0 ; x < WIDTH ; x++)
-		{
-			for(int y = 0 ; y < HEIGHT ; y++)
-			{
-				fb[x][y][0] = 255;
-				fb[x][y][1] = 255;
-				fb[x][y][2] = 255;
-			}
-		}
-	}
-
 	// circling status LED
 	{
 		boolean connected = WiFi.status() == WL_CONNECTED;
