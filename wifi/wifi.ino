@@ -205,21 +205,17 @@ void scanning_pattern() {
 	}
 }
 
-void candidate_pattern() {
-	
+void candidate_pattern()
+{
+	int brightness = 256 - (millis() - last_beacon) / 4;
+	if (brightness < 0)
+		brightness = 0;
+	int color = rgb_dim(my_color, brightness);
+
 	for (int i = 0; i < NUM_PIXELS; i++) {
-		leds.setPixelColor(i, rgb_dim(my_color, brightness));
+		leds.setPixelColor(i, color);
 	}
 	leds.show();
-
-	if (brightness == 255) {
-		direction = -1;
-	} else if (brightness == 0) {
-		direction = 1;
-	}
-
-	brightness = brightness + direction;
-	
 }
 
 void follower_pattern() {
@@ -250,18 +246,15 @@ void follower_pattern() {
 }
 
 void leader_pattern() {
+	int brightness = 256 - (millis() - last_beacon) / 4;
+	if (brightness < 0)
+		brightness = 0;
+	int color = rgb_dim(my_color, brightness);
+
 	for (int i = 0; i < NUM_PIXELS; i++) {
-		leds.setPixelColor(i, rgb_dim(my_color, brightness));
+		leds.setPixelColor(i, color);
 	}
 	leds.show();
-
-	if (brightness == 255) {
-		direction = -1;
-	} else if (brightness == 0) {
-		direction = 1;
-	}
-
-	brightness = brightness + direction;
 }
 
 /*
@@ -367,12 +360,12 @@ void wifi_candidate()
 			my_color
 		};
 
-		last_beacon = now;
 		IPAddress bcast = WiFi.localIP();
 		bcast[3] = 255;
 		udp.beginPacket(bcast, UDP_PORT);
 		udp.write((const uint8_t*) &beacon, sizeof(beacon));
 		udp.endPacket();
+		last_beacon = millis();
 	}
 }
 
