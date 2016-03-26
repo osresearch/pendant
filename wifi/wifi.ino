@@ -60,6 +60,16 @@ int last_beacon;
 String wifi_prefix = "blinky-";
 
 
+// Network packet for beacons
+#define MAGIC 0xdecafbad
+
+typedef struct
+{
+	uint32_t magic;
+	uint32_t id;
+	uint32_t color;
+} beacon_t;
+
 void setup()
 {
 	WiFi.mode(WIFI_STA);
@@ -245,11 +255,17 @@ void wifi_candidate()
 	int now = millis();
 	if (now - last_beacon > BEACON_INTERVAL)
 	{
+		beacon_t beacon = {
+			MAGIC,
+			wifi_my_id,
+			my_color
+		};
+
 		last_beacon = now;
 		IPAddress bcast = WiFi.localIP();
 		bcast[3] = 255;
 		udp.beginPacket(bcast, UDP_PORT);
-		udp.write(String(now).c_str());
+		udp.write((const uint8_t*) &beacon, sizeof(beacon));
 		udp.endPacket();
 	}
 }
@@ -272,16 +288,36 @@ void wifi_follower()
 		}
 
 		Serial.println();
+
+		// parse the leader's packet
+		const beacon_t * beacon = (const beacon_t*) buf;
+		if (beacon->magic != MAGIC)
+		{
+			Serial.println("unable to parse packet");
+		} else {
+			Serial.print("leader: ");
+			Serial.println(beacon->id);
+
+			// flash the color from the beacon
+			for(int i = 0 ; i < NUM_PIXELS ; i += 3)
+				leds.setPixelColor(i, beacon->color);
+		}
 	}
 
 	int now = millis();
 	if (now - last_beacon > BEACON_INTERVAL)
 	{
+		beacon_t beacon = {
+			MAGIC,
+			wifi_my_id,
+			my_color
+		};
+
 		last_beacon = now;
-		IPAddress bcast = WiFi.localIP();
-		bcast[3] = 255;
-		udp.beginPacket(bcast, UDP_PORT);
-		udp.write(String(now).c_str());
+		IPAddress leader = WiFi.localIP();
+		leader[3] = 1; // assume that the leader is also 192.168.x.1
+		udp.beginPacket(leader, UDP_PORT);
+		udp.write((const uint8_t *) &beacon, sizeof(beacon));
 		udp.endPacket();
 	}
 }
