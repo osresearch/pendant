@@ -16,6 +16,7 @@
 #include <WiFiUdp.h>
 #include <Adafruit_NeoPixel.h>
 //#include <Adafruit_ADXL345_U.h>
+#include "color.h"
 
 // LED matrix display
 #define WIDTH 8
@@ -289,20 +290,6 @@ void wifi_leader()
 	// nothing to do yet
 }
 
-// This is code from Adafruit
-// Input a value 0 to 255 to get a color value.
-// The colours are a transition r - g - b - back to r.
-uint32_t Wheel(byte WheelPos) {
-  if(WheelPos < 85) {
-   return leds.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
-  } else if(WheelPos < 170) {
-   WheelPos -= 85;
-   return leds.Color(255 - WheelPos * 3, 0, WheelPos * 3);
-  } else {
-   WheelPos -= 170;
-   return leds.Color(0, WheelPos * 3, 255 - WheelPos * 3);
-  }
-}
 int brightness = 0;
 int direction = 1;
 void scanning_pattern() {
@@ -325,10 +312,12 @@ void scanning_pattern() {
 // Makes the rainbow equally distributed throughout
 void rainbowCycle() {
   uint16_t i, j;
+  int bright = 0;
 
-  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
+  for(j=0; j<256*5; j++, bright = (bright + 1) % 4096) { // 5 cycles of all colors on wheel
     for(i=0; i< leds.numPixels(); i++) {
-      leds.setPixelColor(i, Wheel(((i * 256 / leds.numPixels()) + j) & 255));
+      uint32_t color = Wheel(((i * 256 / leds.numPixels()) + j) & 255);
+      leds.setPixelColor(i, rgb_dim(color, bright / (4096 / 256)));
     }
     leds.show();
   }
