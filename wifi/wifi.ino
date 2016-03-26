@@ -20,6 +20,7 @@
 // LED matrix display
 #define WIDTH 8
 #define HEIGHT 4
+#define NUM_PIXELS (WIDTH * HEIGHT)
 #define LED_PIN 15
 
 Adafruit_NeoPixel leds = Adafruit_NeoPixel(WIDTH*HEIGHT, LED_PIN, NEO_GRB);
@@ -292,9 +293,17 @@ void loop()
 {
 	switch(wifi_mode)
 	{
-	case MODE_SCANNING: wifi_scanning(); break;
+	case MODE_SCANNING: {
+		scanning_pattern();
+		wifi_scanning();
+		break;
+	}
 	case MODE_CANDIDATE: wifi_candidate(); break;
-	case MODE_FOLLOWER: wifi_follower(); break;
+	case MODE_FOLLOWER: {
+		rainbowCycle();
+		wifi_follower();
+		break;
+	}
 	case MODE_LEADER: wifi_leader(); break;
 	default:
 		wifi_mode = MODE_SCANNING;
@@ -328,7 +337,6 @@ void loop()
 	Serial.print(' ');
 	Serial.print(accel.getZ());
 	Serial.println();
-*/
 	
 	// circling status LED
 	{
@@ -390,6 +398,51 @@ void loop()
 	t += 0.02;
 	leds.show();
 	delay(10);
+*/
 }
 
+int brightness = 0;
+int direction = 1;
+void scanning_pattern() {
+	for (int i = 0; i < NUM_PIXELS; i++) {
+		leds.setPixelColor(i, brightness, brightness, brightness);
+	}
+	leds.show();
 
+	if (brightness == 255) {
+		direction = -1;
+	} else if (brightness == 0) {
+		direction = 1;
+	}
+
+	brightness = brightness + direction;
+	
+}
+
+// This is code was adapted from code from Adafruit
+// Makes the rainbow equally distributed throughout
+void rainbowCycle() {
+  uint16_t i, j;
+
+  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
+    for(i=0; i< leds.numPixels(); i++) {
+      leds.setPixelColor(i, Wheel(((i * 256 / leds.numPixels()) + j) & 255));
+    }
+    leds.show();
+  }
+}
+
+// This is code from Adafruit
+// Input a value 0 to 255 to get a color value.
+// The colours are a transition r - g - b - back to r.
+uint32_t Wheel(byte WheelPos) {
+  if(WheelPos < 85) {
+   return leds.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+  } else if(WheelPos < 170) {
+   WheelPos -= 85;
+   return leds.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+  } else {
+   WheelPos -= 170;
+   return leds.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+  }
+}
