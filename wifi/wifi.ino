@@ -388,6 +388,8 @@ void wifi_follower()
 			follower_pattern(beacon->color);
 		}
 
+	} else {
+			follower_pattern(0);
 	}
 
 	int now = millis();
