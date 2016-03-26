@@ -160,7 +160,93 @@ int rescan_network()
 	return min_leader;
 }
 
+/*
+ * Pixel display patterns for the various modes
+ */
+// variables used by the color patterns
+int brightness = 0;
+int direction = 1;
+int dim_levels[] = {2, 4, 8, 16, 32, 64, 128};
+int position = 0;
+void scanning_pattern() {
+	if (random(0) == 0) {
+		// turn them all off
+		for (int i = 0; i < NUM_PIXELS; i++)
+			leds.setPixelColor(i, 0, 0, 0);	
 
+		// color the pixels
+		if (direction == 1) {
+			for (int i = 0; i < 7; i++)
+				leds.setPixelColor(position+i, rgb_dim(my_color, dim_levels[i]));
+		} else if (direction == -1) {
+			for (int i = 7-1; i > 0; i--) 
+				leds.setPixelColor(position-i, rgb_dim(my_color, dim_levels[i]));
+		}
+		leds.show();
+		
+		// change direction as necessary
+		if (position == NUM_PIXELS) {
+			direction = -1;
+		} else if (position == 0) {
+			direction = 1;
+		}	
+		position = position + direction;
+		delay(20);	
+	}
+}
+
+void candidate_pattern() {
+	
+	for (int i = 0; i < NUM_PIXELS; i++) {
+		leds.setPixelColor(i, rgb_dim(my_color, brightness));
+	}
+	leds.show();
+
+	if (brightness == 255) {
+		direction = -1;
+	} else if (brightness == 0) {
+		direction = 1;
+	}
+
+	brightness = brightness + direction;
+	
+}
+
+void follower_pattern(uint32_t my_leader_color) {
+	for (int i = 0; i < NUM_PIXELS; i++) {
+		leds.setPixelColor(i, rgb_dim(my_color, brightness));
+	}
+	// include the my leader's color from the beacon
+	for(int i = 0 ; i < NUM_PIXELS ; i += 3)
+		leds.setPixelColor(i, my_leader_color);
+	leds.show();
+
+	if (brightness == 255) {
+		direction = -1;
+	} else if (brightness == 0) {
+		direction = 1;
+	}
+	brightness = brightness + direction;
+}
+
+void leader_pattern() {
+	for (int i = 0; i < NUM_PIXELS; i++) {
+		leds.setPixelColor(i, rgb_dim(my_color, brightness));
+	}
+	leds.show();
+
+	if (brightness == 255) {
+		direction = -1;
+	} else if (brightness == 0) {
+		direction = 1;
+	}
+
+	brightness = brightness + direction;
+}
+
+/*
+ * Wifi protocol code for the various modes
+ */
 void wifi_follow(int leader_id)
 {
 	WiFi.mode(WIFI_STA);
@@ -298,10 +384,10 @@ void wifi_follower()
 			Serial.print("leader: ");
 			Serial.println(beacon->id);
 
-			// flash the color from the beacon
-			for(int i = 0 ; i < NUM_PIXELS ; i += 3)
-				leds.setPixelColor(i, beacon->color);
+			// Blink the lights!
+			follower_pattern(beacon->color);
 		}
+
 	}
 
 	int now = millis();
@@ -326,85 +412,7 @@ void wifi_follower()
 void wifi_leader()
 {
 	// nothing to do yet
-}
-
-// variables used by the color patterns
-int brightness = 0;
-int direction = 1;
-int dim_levels[] = {2, 4, 8, 16, 32, 64, 128};
-int position = 0;
-void scanning_pattern() {
-	if (random(0) == 0) {
-		// turn them all off
-		for (int i = 0; i < NUM_PIXELS; i++)
-			leds.setPixelColor(i, 0, 0, 0);	
-
-		// color the pixels
-		if (direction == 1) {
-			for (int i = 0; i < 7; i++)
-				leds.setPixelColor(position+i, rgb_dim(my_color, dim_levels[i]));
-		} else if (direction == -1) {
-			for (int i = 7-1; i > 0; i--) 
-				leds.setPixelColor(position-i, rgb_dim(my_color, dim_levels[i]));
-		}
-		leds.show();
-		
-		// change direction as necessary
-		if (position == NUM_PIXELS) {
-			direction = -1;
-		} else if (position == 0) {
-			direction = 1;
-		}	
-		position = position + direction;
-		delay(20);	
-	}
-}
-
-void candidate_pattern() {
-	
-	for (int i = 0; i < NUM_PIXELS; i++) {
-		leds.setPixelColor(i, rgb_dim(my_color, brightness));
-	}
-	leds.show();
-
-	if (brightness == 255) {
-		direction = -1;
-	} else if (brightness == 0) {
-		direction = 1;
-	}
-
-	brightness = brightness + direction;
-	
-}
-
-void follower_pattern() {
-	for (int i = 0; i < NUM_PIXELS; i++) {
-		leds.setPixelColor(i, rgb_dim(my_color, brightness));
-	}
-	leds.show();
-
-	if (brightness == 255) {
-		direction = -1;
-	} else if (brightness == 0) {
-		direction = 1;
-	}
-
-	brightness = brightness + direction;
-}
-
-void leader_pattern() {
-	for (int i = 0; i < NUM_PIXELS; i++) {
-		leds.setPixelColor(i, rgb_dim(my_color, brightness));
-	}
-	leds.show();
-
-	if (brightness == 255) {
-		direction = -1;
-	} else if (brightness == 0) {
-		direction = 1;
-	}
-
-	brightness = brightness + direction;
+	leader_pattern();
 }
 
 // This is code was adapted from code from Adafruit
@@ -437,12 +445,10 @@ void loop()
 			break;
 		}
 		case MODE_FOLLOWER: {
-			follower_pattern();
 			wifi_follower();
 			break;
 		}
 		case MODE_LEADER: {
-			leader_pattern();
 			wifi_leader(); 
 			break;
 		}
