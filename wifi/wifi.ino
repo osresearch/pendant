@@ -63,12 +63,22 @@ String wifi_prefix = "blinky-";
 // Network packet for beacons
 #define MAGIC 0xdecafbad
 
+// The beacon type
 typedef struct
 {
 	uint32_t magic;
 	uint32_t id;
 	uint32_t color;
 } beacon_t;
+
+typedef struct
+{
+	uint32_t leader_id;
+	uint32_t leader_color;
+	int leader_beacon_ms;	
+} follower_state_t;
+
+follower_state_t follower_state;
 
 void setup()
 {
@@ -212,13 +222,23 @@ void candidate_pattern() {
 	
 }
 
-void follower_pattern(uint32_t my_leader_color) {
+void follower_pattern() {
+	uint32_t leader_color = follower_state.leader_color;
+	int beacon_age = millis() - follower_state.leader_beacon_ms;
+	
+	if (beacon_age > 1000) {
+		leader_color = 0;
+	} else {
+		leader_color = rgb_dim(leader_color, 256 - (beacon_age/4));	
+	}
+
 	for (int i = 0; i < NUM_PIXELS; i++) {
 		leds.setPixelColor(i, rgb_dim(my_color, brightness));
 	}
+
 	// include the my leader's color from the beacon
 	for(int i = 0 ; i < NUM_PIXELS ; i += 3)
-		leds.setPixelColor(i, my_leader_color);
+		leds.setPixelColor(i, leader_color);
 	leds.show();
 
 	if (brightness == 255) {
@@ -384,12 +404,11 @@ void wifi_follower()
 			Serial.print("leader: ");
 			Serial.println(beacon->id);
 
-			// Blink the lights!
-			follower_pattern(beacon->color);
+			// Update follower state from beacon
+			follower_state.leader_id = beacon->id;
+			follower_state.leader_color = beacon->color;
+			follower_state.leader_beacon_ms = millis();
 		}
-
-	} else {
-			follower_pattern(0);
 	}
 
 	int now = millis();
@@ -448,6 +467,7 @@ void loop()
 		}
 		case MODE_FOLLOWER: {
 			wifi_follower();
+			follower_pattern();
 			break;
 		}
 		case MODE_LEADER: {
