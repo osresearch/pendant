@@ -45,6 +45,7 @@ WiFiUDP udp;
 #define MODE_LEADER 3
 
 int wifi_my_id;
+uint32_t my_color;
 int wifi_mode = 0; // scanning, joined, leader
 
 #define SCAN_INTERVAL 10000
@@ -69,6 +70,7 @@ void setup()
 
 	// generate a random id for ourselves
 	wifi_my_id = random(99998) + 1;
+	my_color = wheel(256);
 
 	leds.begin();
 	leds.setBrightness(32);
