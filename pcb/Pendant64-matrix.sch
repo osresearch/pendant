@@ -5960,6 +5960,7 @@ We've spent an enormous amount of time creating and checking these footprints an
 <part name="JP6" library="adafruit" deviceset="PINHD-1X1" device=""/>
 <part name="JP7" library="adafruit" deviceset="PINHD-1X1" device=""/>
 <part name="GND1" library="supply1" deviceset="GND" device=""/>
+<part name="BATT2" library="adafruit" deviceset="AAA" device=""/>
 </parts>
 <sheets>
 <sheet>
@@ -6060,6 +6061,7 @@ We've spent an enormous amount of time creating and checking these footprints an
 <instance part="JP6" gate="G$1" x="307.34" y="58.42" rot="MR0"/>
 <instance part="JP7" gate="G$1" x="307.34" y="50.8" rot="MR0"/>
 <instance part="GND1" gate="1" x="320.04" y="43.18"/>
+<instance part="BATT2" gate="G$1" x="276.86" y="165.1" rot="R270"/>
 </instances>
 <busses>
 </busses>
@@ -6500,6 +6502,9 @@ We've spent an enormous amount of time creating and checking these footprints an
 <segment>
 <pinref part="BATT1" gate="G$1" pin="+"/>
 <pinref part="GND3" gate="1" pin="GND"/>
+<pinref part="BATT2" gate="G$1" pin="+"/>
+<wire x1="276.86" y1="160.02" x2="289.56" y2="160.02" width="0.1524" layer="91"/>
+<junction x="289.56" y="160.02"/>
 </segment>
 <segment>
 <pinref part="C8" gate="G$1" pin="2"/>
@@ -7091,6 +7096,9 @@ We've spent an enormous amount of time creating and checking these footprints an
 <pinref part="BATT1" gate="G$1" pin="-"/>
 <wire x1="289.56" y1="172.72" x2="289.56" y2="177.8" width="0.1524" layer="91"/>
 <label x="289.56" y="175.26" size="1.778" layer="95"/>
+<pinref part="BATT2" gate="G$1" pin="-"/>
+<wire x1="276.86" y1="172.72" x2="289.56" y2="172.72" width="0.1524" layer="91"/>
+<junction x="289.56" y="172.72"/>
 </segment>
 <segment>
 <pinref part="D2" gate="G$1" pin="A"/>
