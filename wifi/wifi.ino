@@ -80,6 +80,16 @@ typedef struct
 
 follower_state_t follower_state;
 
+typedef struct
+{
+	uint32_t follower_id;
+	uint32_t follower_color;
+	int follower_beacon_ms;	
+} followling_state_t;
+
+#define MAX_FOLLOWLINGS;
+followling_state_t followlings[MAX_FOLLOWLINGS];
+
 void setup()
 {
 	WiFi.mode(WIFI_STA);
@@ -349,6 +359,15 @@ void wifi_candidate()
 		}
 
 		Serial.println();
+
+		// Parse this packet to see if it's a legit follower
+		const beacon_t * beacon = (const beacon_t*) buf;
+		if (beacon->magic != MAGIC)
+		{
+			Serial.println("unable to parse packet");
+		} else {
+			mode = MODE_LEADER;
+		}
 	}
 
 	int now = millis();
@@ -366,6 +385,7 @@ void wifi_candidate()
 		udp.write((const uint8_t*) &beacon, sizeof(beacon));
 		udp.endPacket();
 		last_beacon = millis();
+	 	Serial.println("sent beacon");
 	}
 }
 
@@ -423,10 +443,92 @@ void wifi_follower()
 }
 
 
+// TODO: have this take a pointer to a struct that is formed from the
+// incoming beacon, and use that to create the new followling entry
+// if the followling is not already in the array.
+followling_state_t* find_followling(follower_id)
+{
+	// if the followling is already in the array, return a ref to it
+	for (int i = 0; i < MAX_FOLLOWLINGS; i++)
+	{
+		following_state_t* f = &followlings[i];
+		if ( follower_id == f->follower_id ) return f;
+	}
+
+	// we have a new followling, find it a slot in the array
+	for (int i = 0; i < MAX_FOLLOWLINGS; i++)
+	{
+		following_state_t* f = &followlings[i];
+		if (now - f->follower_beacon_ms < 60000) continue;	
+
+		// f is a free space.  Replace the element with the current followling	
+		f->follower_id = follower_id;
+		return f;
+	}
+	
+	// No free spaces!!!
+	return NULL;
+}
+
 void wifi_leader()
 {
 	// nothing to do yet
 	leader_pattern();
+
+	// did we get a packet from a follower?
+	int len = udp.parsePacket();
+	if (len)
+	{
+		IPAddress ip = udp.remoteIP();
+		Serial.print(ip);
+		Serial.print(' ');
+		Serial.print(len);
+		udp.read(buf, sizeof(buf));
+		for(int i = 0 ; i < len ; i++)
+		{
+			Serial.print(' ');
+			Serial.print(buf[i], HEX);
+		}
+
+		Serial.println();
+
+		// parse the follower's packet
+		const beacon_t * beacon = (const beacon_t*) buf;
+		if (beacon->magic != MAGIC)
+		{
+			Serial.println("unable to parse packet");
+		} else {
+			Serial.print("follower: ");
+			Serial.println(beacon->id);
+
+			// First, is this a new followling?
+			followling_state_t* f = find_followling(beacon->id);
+			if (!f) 
+			{
+				Serial.println("No free space in array for new followling");
+			} else {
+				f->follower_color = beacon->color;
+				f->follower_beacon_ms = millis();
+			}
+		}
+	}
+
+	int now = millis();
+	if (now - last_beacon > BEACON_INTERVAL)
+	{
+		beacon_t beacon = {
+			MAGIC,
+			wifi_my_id,
+			my_color
+		};
+
+		last_beacon = now;
+		IPAddress leader = WiFi.localIP();
+		leader[3] = 1; // assume that the leader is also 192.168.x.1
+		udp.beginPacket(leader, UDP_PORT);
+		udp.write((const uint8_t *) &beacon, sizeof(beacon));
+		udp.endPacket();
+	}
 }
 
 // This is code was adapted from code from Adafruit
