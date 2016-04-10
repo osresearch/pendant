@@ -305,7 +305,7 @@ void follower_pattern() {
 	}
 
 	// include the my leader's color from the beacon
-	for(int i = 0 ; i < NUM_PIXELS ; i += 3)
+	for(int i = 0 ; i < NUM_PIXELS ; i += 4)
 		leds.setPixelColor(i, leader_color);
 	leds.show();
 
@@ -456,6 +456,7 @@ void wifi_candidate()
 		}
 	}
 
+	// Send a beacon to potential followers/leaders
 	int now = millis();
 	if (now - last_beacon > BEACON_INTERVAL)
 	{
@@ -465,12 +466,12 @@ void wifi_candidate()
 			my_color
 		};
 
+		last_beacon = now;
 		IPAddress bcast = WiFi.localIP();
 		bcast[3] = 255;
 		udp.beginPacket(bcast, UDP_PORT);
 		udp.write((const uint8_t*) &beacon, sizeof(beacon));
 		udp.endPacket();
-		last_beacon = millis();
 	 	Serial.println("sent beacon");
 	}
 }
@@ -531,9 +532,6 @@ void wifi_follower()
 
 void wifi_leader()
 {
-	// nothing to do yet
-	leader_pattern();
-
 	// did we get a packet from a follower?
 	int len = udp.parsePacket();
 	if (len)
@@ -556,6 +554,7 @@ void wifi_leader()
 		parse_follower_packet(beacon);
 	}
 
+	// Send out our own beacon
 	int now = millis();
 	if (now - last_beacon > BEACON_INTERVAL)
 	{
@@ -566,9 +565,9 @@ void wifi_leader()
 		};
 
 		last_beacon = now;
-		IPAddress leader = WiFi.localIP();
-		leader[3] = 1; // assume that the leader is also 192.168.x.1
-		udp.beginPacket(leader, UDP_PORT);
+		IPAddress bcast = WiFi.localIP();
+		bcast[3] = 255; 
+		udp.beginPacket(bcast, UDP_PORT);
 		udp.write((const uint8_t *) &beacon, sizeof(beacon));
 		udp.endPacket();
 	}
@@ -610,6 +609,7 @@ void loop()
 		}
 		case MODE_LEADER: {
 			wifi_leader(); 
+			leader_pattern();
 			break;
 		}
 		default:
