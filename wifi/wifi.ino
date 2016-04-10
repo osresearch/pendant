@@ -87,7 +87,7 @@ typedef struct
 	int follower_beacon_ms;	
 } followling_state_t;
 
-#define MAX_FOLLOWLINGS;
+#define MAX_FOLLOWLINGS 16
 followling_state_t followlings[MAX_FOLLOWLINGS];
 
 void setup()
@@ -118,6 +118,68 @@ uint8_t buf[128];
 const float smooth = 0;
 float ax, ay, az;
 
+// TODO: have this take a pointer to a struct that is formed from the
+// incoming beacon, and use that to create the new followling entry
+// if the followling is not already in the array.
+followling_state_t* find_followling(uint32_t follower_id)
+{
+	// if the followling is already in the array, return a ref to it
+	for (int i = 0; i < MAX_FOLLOWLINGS; i++)
+	{
+		followling_state_t* f = &followlings[i];
+		if ( follower_id == f->follower_id ) return f;
+	}
+
+	uint32_t now = millis();
+	// we have a new followling, find it a slot in the array
+	for (int i = 0; i < MAX_FOLLOWLINGS; i++)
+	{
+		followling_state_t* f = &followlings[i];
+		if (now - f->follower_beacon_ms < 60000) continue;	
+
+		// f is a free space.  Replace the element with the current followling	
+		f->follower_id = follower_id;
+		Serial.print("Adding follower: ");
+		Serial.print(f->follower_id);
+		Serial.print(" at index: ");
+		Serial.print(i);
+		return f;
+	}
+	
+	// No free spaces!!!
+	return NULL;
+}
+
+/*
+ * Parse a follower packet, intended to be used by leaders and candidates
+ */
+boolean parse_follower_packet(const beacon_t* beacon)
+{
+	// Not one of ours.
+	if (beacon->magic != MAGIC)
+	{
+		Serial.println("unable to parse packet");
+		return false;
+	} 
+
+	Serial.println("follower: ");
+	Serial.println(beacon->id);
+	
+	// First, is this a new followling?
+	followling_state_t* f = find_followling(beacon->id);
+
+	// There was no space to put the new followling
+	if (!f)
+	{
+		Serial.println("No free space in array for new followling");
+		return false;
+	}
+
+	// Finish setting the data for the followling
+	f->follower_color = beacon->color;
+	f->follower_beacon_ms = millis();
+	return true;
+}
 
 /*
  * Scan the networks, looking for one that matches our prefix.
@@ -256,13 +318,37 @@ void follower_pattern() {
 }
 
 void leader_pattern() {
-	int brightness = 256 - (millis() - last_beacon) / 4;
-	if (brightness < 0)
-		brightness = 0;
-	int color = rgb_dim(my_color, brightness);
+	// solid self color
+	int self_color = rgb_dim(my_color, 255);
+	leds.setPixelColor(0, self_color);
+	leds.setPixelColor(1, self_color);
 
-	for (int i = 0; i < NUM_PIXELS; i++) {
-		leds.setPixelColor(i, color);
+	uint32_t now = millis();
+	int next_led = 2; // next position, or next index in the pixel array
+	// followling colors
+	for (int i = 0; i < MAX_FOLLOWLINGS; i++) 
+	{
+		followling_state_t* f = &followlings[i];
+		// we have a followling in this space
+		if (f->follower_id) 
+		{
+			int f_brightness = 256 - (now - f->follower_beacon_ms) / 4;
+			if (f_brightness < 0)
+				f_brightness = 0;
+			int f_color = rgb_dim(f->follower_color, f_brightness);
+			leds.setPixelColor(i+2, f_color);
+			next_led++;
+		}
+	}
+
+	// Self color tht puslses with beacons sent
+	int s_brightness = 256 - (now - last_beacon) / 4;
+	if (s_brightness < 0)
+		s_brightness = 0;
+	int s_color = rgb_dim(my_color, s_brightness);
+
+	for (int i = next_led; i < NUM_PIXELS; i++) {
+		leds.setPixelColor(i, s_color);
 	}
 	leds.show();
 }
@@ -362,11 +448,11 @@ void wifi_candidate()
 
 		// Parse this packet to see if it's a legit follower
 		const beacon_t * beacon = (const beacon_t*) buf;
-		if (beacon->magic != MAGIC)
+		// If we successfully took on a follower, transition to leader
+		if (parse_follower_packet(beacon))
 		{
-			Serial.println("unable to parse packet");
-		} else {
-			mode = MODE_LEADER;
+			Serial.println("going to leader mode");
+			wifi_mode = MODE_LEADER;
 		}
 	}
 
@@ -443,33 +529,6 @@ void wifi_follower()
 }
 
 
-// TODO: have this take a pointer to a struct that is formed from the
-// incoming beacon, and use that to create the new followling entry
-// if the followling is not already in the array.
-followling_state_t* find_followling(follower_id)
-{
-	// if the followling is already in the array, return a ref to it
-	for (int i = 0; i < MAX_FOLLOWLINGS; i++)
-	{
-		following_state_t* f = &followlings[i];
-		if ( follower_id == f->follower_id ) return f;
-	}
-
-	// we have a new followling, find it a slot in the array
-	for (int i = 0; i < MAX_FOLLOWLINGS; i++)
-	{
-		following_state_t* f = &followlings[i];
-		if (now - f->follower_beacon_ms < 60000) continue;	
-
-		// f is a free space.  Replace the element with the current followling	
-		f->follower_id = follower_id;
-		return f;
-	}
-	
-	// No free spaces!!!
-	return NULL;
-}
-
 void wifi_leader()
 {
 	// nothing to do yet
@@ -494,23 +553,7 @@ void wifi_leader()
 
 		// parse the follower's packet
 		const beacon_t * beacon = (const beacon_t*) buf;
-		if (beacon->magic != MAGIC)
-		{
-			Serial.println("unable to parse packet");
-		} else {
-			Serial.print("follower: ");
-			Serial.println(beacon->id);
-
-			// First, is this a new followling?
-			followling_state_t* f = find_followling(beacon->id);
-			if (!f) 
-			{
-				Serial.println("No free space in array for new followling");
-			} else {
-				f->follower_color = beacon->color;
-				f->follower_beacon_ms = millis();
-			}
-		}
+		parse_follower_packet(beacon);
 	}
 
 	int now = millis();
