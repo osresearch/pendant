@@ -318,12 +318,19 @@ void follower_pattern() {
 }
 
 void leader_pattern() {
+	uint32_t now = millis();
+
 	// solid self color
 	int self_color = rgb_dim(my_color, 255);
 	leds.setPixelColor(0, self_color);
 	leds.setPixelColor(1, self_color);
 
-	uint32_t now = millis();
+	// Self color tht puslses with beacons sent
+	int s_brightness = 256 - (now - last_beacon) / 4;
+	if (s_brightness < 0)
+		s_brightness = 0;
+	int s_color = rgb_dim(my_color, s_brightness);
+
 	int next_led = 2; // next position, or next index in the pixel array
 	// followling colors
 	for (int i = 0; i < MAX_FOLLOWLINGS; i++) 
@@ -336,16 +343,13 @@ void leader_pattern() {
 			if (f_brightness < 0)
 				f_brightness = 0;
 			int f_color = rgb_dim(f->follower_color, f_brightness);
-			leds.setPixelColor(i+2, f_color);
+			leds.setPixelColor(i+2, f_color); // use followling color
 			next_led++;
+		} else {
+			// this index is now gone because the followling was lost
+			leds.setPixelColor(i+2, s_color); // use self-color		
 		}
 	}
-
-	// Self color tht puslses with beacons sent
-	int s_brightness = 256 - (now - last_beacon) / 4;
-	if (s_brightness < 0)
-		s_brightness = 0;
-	int s_color = rgb_dim(my_color, s_brightness);
 
 	for (int i = next_led; i < NUM_PIXELS; i++) {
 		leds.setPixelColor(i, s_color);
@@ -478,6 +482,8 @@ void wifi_candidate()
 
 void wifi_follower()
 {
+	int now = millis();
+
 	// did we get a packet from the leader?
 	int len = udp.parsePacket();
 	if (len)
@@ -511,7 +517,14 @@ void wifi_follower()
 		}
 	}
 
-	int now = millis();
+	// have we lost our leader? if so, go into scanning mode
+	if (now - follower_state.leader_beacon_ms > 10000)
+	{
+		wifi_mode = MODE_SCANNING;
+		return;
+	}
+	
+	// send our own beacon, if it's been a while
 	if (now - last_beacon > BEACON_INTERVAL)
 	{
 		beacon_t beacon = {
