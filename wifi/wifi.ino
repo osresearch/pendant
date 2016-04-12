@@ -48,7 +48,7 @@ int wifi_my_id;
 uint32_t my_color;
 int wifi_mode = 0; // scanning, joined, leader
 
-#define SCAN_INTERVAL 10000
+#define SCAN_INTERVAL 5000
 int last_scan = 0; // periodic scanning timer, ms of last scan
 int wifi_scans = 0; // how many scans have we done?
 
@@ -76,6 +76,7 @@ typedef struct
 	uint32_t leader_id;
 	uint32_t leader_color;
 	int leader_beacon_ms;	
+	int my_beacon_ms;
 } follower_state_t;
 
 follower_state_t follower_state;
@@ -118,7 +119,7 @@ uint8_t buf[128];
 const float smooth = 0;
 float ax, ay, az;
 
-// TODO: have this take a pointer to a struct that is formed from the
+// Takes a pointer to a struct that is formed from the
 // incoming beacon, and use that to create the new followling entry
 // if the followling is not already in the array.
 followling_state_t* find_followling(uint32_t follower_id)
@@ -135,6 +136,8 @@ followling_state_t* find_followling(uint32_t follower_id)
 	for (int i = 0; i < MAX_FOLLOWLINGS; i++)
 	{
 		followling_state_t* f = &followlings[i];
+
+		// If the current followling is still around, skip to next slot
 		if (now - f->follower_beacon_ms < 60000) continue;	
 
 		// f is a free space.  Replace the element with the current followling	
@@ -290,18 +293,24 @@ void candidate_pattern()
 	leds.show();
 }
 
-void follower_pattern() {
+void follower_pattern()
+{
+	uint32_t now = millis();
 	uint32_t leader_color = follower_state.leader_color;
-	int beacon_age = millis() - follower_state.leader_beacon_ms;
+	int lead_beacon_age = now - follower_state.leader_beacon_ms;
+	int my_beacon_age = now - follower_state.my_beacon_ms;
 	
-	if (beacon_age > 1000) {
-		leader_color = 0;
+	// If we haven't heard a leader beacon in a while, start scanning
+	if (lead_beacon_age > 60000) {
+		wifi_mode = MODE_SCANNING;	
 	} else {
-		leader_color = rgb_dim(leader_color, 256 - (beacon_age/4));	
+		leader_color = rgb_dim(leader_color, 256 - (lead_beacon_age/4));	
 	}
 
+	// flash my color when I send a beacon
+	uint32_t self_color = rgb_dim(my_color, 256 - (my_beacon_age/4));
 	for (int i = 0; i < NUM_PIXELS; i++) {
-		leds.setPixelColor(i, rgb_dim(my_color, brightness));
+		leds.setPixelColor(i, self_color);
 	}
 
 	// include the my leader's color from the beacon
@@ -309,12 +318,8 @@ void follower_pattern() {
 		leds.setPixelColor(i, leader_color);
 	leds.show();
 
-	if (brightness == 255) {
-		direction = -1;
-	} else if (brightness == 0) {
-		direction = 1;
-	}
-	brightness = brightness + direction;
+	// delay so the pixels don't get flickery
+	delay(10);
 }
 
 void leader_pattern() {
@@ -325,28 +330,26 @@ void leader_pattern() {
 	leds.setPixelColor(0, self_color);
 	leds.setPixelColor(1, self_color);
 
-	// Self color tht puslses with beacons sent
+	// Self color that pulses with beacons sent
 	int s_brightness = 256 - (now - last_beacon) / 4;
-	if (s_brightness < 0)
-		s_brightness = 0;
 	int s_color = rgb_dim(my_color, s_brightness);
 
-	int next_led = 2; // next position, or next index in the pixel array
+	int next_led = 2; // skip the first 2 solid self-colored ones
+
 	// followling colors
 	for (int i = 0; i < MAX_FOLLOWLINGS; i++) 
 	{
 		followling_state_t* f = &followlings[i];
-		// we have a followling in this space
-		if (f->follower_id) 
+
+		// we have a followling in this space, and it's still around
+		if (f->follower_id && (now - f->follower_beacon_ms < 60000)) 
 		{
 			int f_brightness = 256 - (now - f->follower_beacon_ms) / 4;
-			if (f_brightness < 0)
-				f_brightness = 0;
 			int f_color = rgb_dim(f->follower_color, f_brightness);
 			leds.setPixelColor(i+2, f_color); // use followling color
 			next_led++;
 		} else {
-			// this index is now gone because the followling was lost
+			// this index is empty or has a lost follower
 			leds.setPixelColor(i+2, s_color); // use self-color		
 		}
 	}
@@ -525,7 +528,7 @@ void wifi_follower()
 	}
 	
 	// send our own beacon, if it's been a while
-	if (now - last_beacon > BEACON_INTERVAL)
+	if (now - follower_state.my_beacon_ms > BEACON_INTERVAL)
 	{
 		beacon_t beacon = {
 			MAGIC,
@@ -533,7 +536,7 @@ void wifi_follower()
 			my_color
 		};
 
-		last_beacon = now;
+		follower_state.my_beacon_ms = now;
 		IPAddress leader = WiFi.localIP();
 		leader[3] = 1; // assume that the leader is also 192.168.x.1
 		udp.beginPacket(leader, UDP_PORT);
@@ -584,6 +587,7 @@ void wifi_leader()
 		udp.write((const uint8_t *) &beacon, sizeof(beacon));
 		udp.endPacket();
 	}
+
 }
 
 // This is code was adapted from code from Adafruit

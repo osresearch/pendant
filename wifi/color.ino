@@ -20,6 +20,14 @@ uint32_t Wheel(byte WheelPos) {
 
 uint32_t rgb_dim(uint32_t rgb, int dim)
 {
+	if (dim < 0) {
+		dim = 0;
+	}
+
+	if (dim > 256) {
+		dim = 256;
+	}
+
 	int r = (rgb >> 16) & 0xFF;
 	int g = (rgb >>  8) & 0xFF;
 	int b = (rgb >>  0) & 0xFF;
