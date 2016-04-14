@@ -48,6 +48,19 @@ int wifi_my_id;
 uint32_t my_color;
 int wifi_mode = 0; // scanning, joined, leader
 
+// Possible colors that leader can assign to followers
+uint32_t assignment_colors[] = {
+	leds.Color(255, 20, 0),
+	leds.Color(255, 100, 0),
+	leds.Color(255, 255, 30),
+	leds.Color(0, 255, 30),
+	leds.Color(0, 255, 150),
+	leds.Color(0, 30, 255),
+	leds.Color(255, 20, 80),
+};
+#define COLORS_LENGTH 7
+uint32_t used_colors[COLORS_LENGTH];
+
 #define SCAN_INTERVAL 5000
 int last_scan = 0; // periodic scanning timer, ms of last scan
 int wifi_scans = 0; // how many scans have we done?
@@ -70,6 +83,14 @@ typedef struct
 	uint32_t id;
 	uint32_t color;
 } beacon_t;
+
+// The assignment type, message sent from leader to assign colors to followers
+typedef struct
+{
+	uint32_t magic;
+	uint32_t id;
+	uint32_t assigned_color;
+} assignment_t;
 
 typedef struct
 {
@@ -99,9 +120,10 @@ void setup()
 	udp.begin(UDP_PORT);
 	last_scan = millis();
 
-	// generate a random id for ourselves
+	// generate a random id for ourselves, and initialize our color to white
 	wifi_my_id = random(99998) + 1;
-	my_color = Wheel(random(256));
+	my_color = leds.Color(255, 20, 0);
+	//my_color = Wheel(random(256));
 
 	leds.begin();
 	leds.setBrightness(32);
@@ -119,10 +141,83 @@ uint8_t buf[128];
 const float smooth = 0;
 float ax, ay, az;
 
+/*
+ * Parse a follower packet, intended to be used by leaders and candidates
+ *
+boolean parse_follower_packet(const beacon_t* beacon, IPAddress ip)
+{
+	// Not one of ours.
+	if (beacon->magic != MAGIC)
+	{
+		Serial.println("unable to parse packet");
+		return false;
+	} 
+
+	Serial.println("follower: ");
+	Serial.println(beacon->id);
+	
+	// First, is this a new followling? 
+	followling_state_t* f = find_followling(beacon->id, IPAddress ip);
+
+	// There was no space to put the new followling
+	if (!f)
+	{
+		Serial.println("No free space in array for new followling");
+		return false;
+	}
+
+	// Finish setting the data for the followling
+	f->follower_color = beacon->color;
+	f->follower_beacon_ms = millis();
+	return true;
+}
+*/
+
+/*
+ * Empty array when full
+ */
+void empty_used_if_full()
+{
+	for (int i = 0; i < COLORS_LENGTH; i++)
+	{
+		int spots_taken = 0;
+		if (used_colors[i] != 0)
+		{
+			spots_taken++;
+		}
+
+		// if it's full, empty it:
+		if (spots_taken >= COLORS_LENGTH)
+		{
+			Serial.println("Used colors array is full, setting all to zero");
+			for (int i = 0; i < COLORS_LENGTH; i++)
+			{
+				used_colors[i] = 0;
+			}
+		}
+	}
+}
+
+/* 
+ * used_colors.push(new_used_color)
+ */
+void add_to_used(uint32_t color)
+{
+	for (int i = 0; i < COLORS_LENGTH; i++)
+	{
+		if (used_colors[i] != 0)
+		{
+			used_colors[i] = color;
+		} else {
+			Serial.println("ERROR: The used_colors array was full when it should not be");	
+		}
+	}
+}
+
 // Takes a pointer to a struct that is formed from the
 // incoming beacon, and use that to create the new followling entry
 // if the followling is not already in the array.
-followling_state_t* find_followling(uint32_t follower_id)
+followling_state_t* find_followling(uint32_t follower_id, IPAddress ip)
 {
 	// if the followling is already in the array, return a ref to it
 	for (int i = 0; i < MAX_FOLLOWLINGS; i++)
@@ -140,8 +235,47 @@ followling_state_t* find_followling(uint32_t follower_id)
 		// If the current followling is still around, skip to next slot
 		if (now - f->follower_beacon_ms < 60000) continue;	
 
-		// f is a free space.  Replace the element with the current followling	
+		// f is a free space.  Replace the element with the current followling,	
+		// and send a color assignment to the follower.
 		f->follower_id = follower_id;
+
+		// Pick a random color and assign it this followlings' state
+		int again = 1;
+		while(again = 1) {
+			uint32_t potential_color = assignment_colors[random(7)];
+			empty_used_if_full();
+		
+			// if used, add to used array and try another
+			for (int i = 0; i < COLORS_LENGTH; i++)
+			{
+				int tried = 0;
+				if (potential_color == used_colors[i])
+				{
+					break;	
+				} else {
+					tried++;
+				}
+				if (tried == COLORS_LENGTH)
+				{
+					// mark it as used
+					add_to_used(potential_color);
+					// update followling state
+					f->follower_color = potential_color;
+					again = 0;
+				}
+			}
+		}
+
+		// now send out that color assignment to the follower
+		assignment_t assignment = {
+			MAGIC,
+			wifi_my_id,
+			f->follower_color
+		};
+		udp.beginPacket(ip, UDP_PORT);
+		udp.write((const uint8_t*) &assignment, sizeof(assignment));
+		udp.endPacket();
+		
 		Serial.print("Adding follower: ");
 		Serial.print(f->follower_id);
 		Serial.print(" at index: ");
@@ -154,9 +288,10 @@ followling_state_t* find_followling(uint32_t follower_id)
 }
 
 /*
- * Parse a follower packet, intended to be used by leaders and candidates
+ * Parse a follower packet along with an IP if it's the first packet from
+ * a follower (so we can assign it back a color and whatever else)
  */
-boolean parse_follower_packet(const beacon_t* beacon)
+boolean parse_follower_packet(const beacon_t* beacon, IPAddress ip)
 {
 	// Not one of ours.
 	if (beacon->magic != MAGIC)
@@ -168,8 +303,8 @@ boolean parse_follower_packet(const beacon_t* beacon)
 	Serial.println("follower: ");
 	Serial.println(beacon->id);
 	
-	// First, is this a new followling?
-	followling_state_t* f = find_followling(beacon->id);
+	// First, is this a new followling? 
+	followling_state_t* f = find_followling(beacon->id, ip);
 
 	// There was no space to put the new followling
 	if (!f)
@@ -179,8 +314,9 @@ boolean parse_follower_packet(const beacon_t* beacon)
 	}
 
 	// Finish setting the data for the followling
-	f->follower_color = beacon->color;
 	f->follower_beacon_ms = millis();
+	
+
 	return true;
 }
 
@@ -253,7 +389,8 @@ int brightness = 0;
 int direction = 1;
 int dim_levels[] = {2, 4, 8, 16, 32, 64, 128};
 int position = 0;
-void scanning_pattern() {
+void scanning_pattern() 
+{
 	if (random(0) == 0) {
 		// turn them all off
 		for (int i = 0; i < NUM_PIXELS; i++)
@@ -456,7 +593,7 @@ void wifi_candidate()
 		// Parse this packet to see if it's a legit follower
 		const beacon_t * beacon = (const beacon_t*) buf;
 		// If we successfully took on a follower, transition to leader
-		if (parse_follower_packet(beacon))
+		if (parse_follower_packet(beacon, ip))
 		{
 			Serial.println("going to leader mode");
 			wifi_mode = MODE_LEADER;
@@ -567,8 +704,10 @@ void wifi_leader()
 
 		// parse the follower's packet
 		const beacon_t * beacon = (const beacon_t*) buf;
-		parse_follower_packet(beacon);
+		parse_follower_packet(beacon, ip);
 	}
+
+	// If this is a new follower, send them a color assignment 
 
 	// Send out our own beacon
 	int now = millis();
