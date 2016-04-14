@@ -74,23 +74,18 @@ String wifi_prefix = "blinky-";
 
 
 // Network packet for beacons
-#define MAGIC 0xdecafbad
+#define BEACON_MAGIC 0xdecafbad
+// Network packet for assignments
+#define ASSIGN_MAGIC 0xcafefade
 
-// The beacon type
+// The message type, for broadcast beacons and assignment messages
 typedef struct
 {
-	uint32_t magic;
+	uint32_t magic; // distiguishes beacons from assignments
 	uint32_t id;
-	uint32_t color;
-} beacon_t;
+	uint32_t color; // self color in beacons, assigned color in assignments
+} message_t;
 
-// The assignment type, message sent from leader to assign colors to followers
-typedef struct
-{
-	uint32_t magic;
-	uint32_t id;
-	uint32_t assigned_color;
-} assignment_t;
 
 typedef struct
 {
@@ -140,38 +135,6 @@ void setup()
 uint8_t buf[128];
 const float smooth = 0;
 float ax, ay, az;
-
-/*
- * Parse a follower packet, intended to be used by leaders and candidates
- *
-boolean parse_follower_packet(const beacon_t* beacon, IPAddress ip)
-{
-	// Not one of ours.
-	if (beacon->magic != MAGIC)
-	{
-		Serial.println("unable to parse packet");
-		return false;
-	} 
-
-	Serial.println("follower: ");
-	Serial.println(beacon->id);
-	
-	// First, is this a new followling? 
-	followling_state_t* f = find_followling(beacon->id, IPAddress ip);
-
-	// There was no space to put the new followling
-	if (!f)
-	{
-		Serial.println("No free space in array for new followling");
-		return false;
-	}
-
-	// Finish setting the data for the followling
-	f->follower_color = beacon->color;
-	f->follower_beacon_ms = millis();
-	return true;
-}
-*/
 
 /*
  * Empty array when full
@@ -242,7 +205,7 @@ followling_state_t* find_followling(uint32_t follower_id, IPAddress ip)
 		// Pick a random color and assign it this followlings' state
 		int again = 1;
 		while(again = 1) {
-			uint32_t potential_color = assignment_colors[random(7)];
+			uint32_t potential_color = assignment_colors[random(COLORS_LENGTH)];
 			empty_used_if_full();
 		
 			// if used, add to used array and try another
@@ -267,13 +230,13 @@ followling_state_t* find_followling(uint32_t follower_id, IPAddress ip)
 		}
 
 		// now send out that color assignment to the follower
-		assignment_t assignment = {
-			MAGIC,
+		message_t message = {
+			ASSIGN_MAGIC,
 			wifi_my_id,
 			f->follower_color
 		};
 		udp.beginPacket(ip, UDP_PORT);
-		udp.write((const uint8_t*) &assignment, sizeof(assignment));
+		udp.write((const uint8_t*) &message, sizeof(message));
 		udp.endPacket();
 		
 		Serial.print("Adding follower: ");
@@ -291,33 +254,42 @@ followling_state_t* find_followling(uint32_t follower_id, IPAddress ip)
  * Parse a follower packet along with an IP if it's the first packet from
  * a follower (so we can assign it back a color and whatever else)
  */
-boolean parse_follower_packet(const beacon_t* beacon, IPAddress ip)
+boolean parse_follower_packet(const message_t* message, IPAddress ip)
 {
 	// Not one of ours.
-	if (beacon->magic != MAGIC)
+	if (message->magic != BEACON_MAGIC && message->magic != ASSIGN_MAGIC)
 	{
 		Serial.println("unable to parse packet");
 		return false;
 	} 
 
-	Serial.println("follower: ");
-	Serial.println(beacon->id);
-	
-	// First, is this a new followling? 
-	followling_state_t* f = find_followling(beacon->id, ip);
-
-	// There was no space to put the new followling
-	if (!f)
+	if (message->magic == BEACON_MAGIC)
 	{
-		Serial.println("No free space in array for new followling");
-		return false;
+		Serial.println("follower: ");
+		Serial.println(message->id);
+		
+		// First, is this a new followling? 
+		followling_state_t* f = find_followling(message->id, ip);
+	
+		// There was no space to put the new followling
+		if (!f)
+		{
+			Serial.println("No free space in array for new followling");
+			return false;
+		}
+
+		// Finish setting the data for the followling
+		f->follower_beacon_ms = millis();
+
+		return true;
 	}
 
-	// Finish setting the data for the followling
-	f->follower_beacon_ms = millis();
-	
+	if (message->magic == ASSIGN_MAGIC)
+	{
+			Serial.println("This message was an assignment, not a follower beacon");
+			return false;
+	}
 
-	return true;
 }
 
 /*
@@ -389,6 +361,7 @@ int brightness = 0;
 int direction = 1;
 int dim_levels[] = {2, 4, 8, 16, 32, 64, 128};
 int position = 0;
+uint32_t scan_color = leds.Color(255, 255, 255);
 void scanning_pattern() 
 {
 	if (random(0) == 0) {
@@ -399,10 +372,10 @@ void scanning_pattern()
 		// color the pixels
 		if (direction == 1) {
 			for (int i = 0; i < 7; i++)
-				leds.setPixelColor(position+i, rgb_dim(my_color, dim_levels[i]));
+				leds.setPixelColor(position+i, rgb_dim(scan_color, dim_levels[i]));
 		} else if (direction == -1) {
 			for (int i = 7-1; i > 0; i--) 
-				leds.setPixelColor(position-i, rgb_dim(my_color, dim_levels[i]));
+				leds.setPixelColor(position-i, rgb_dim(scan_color, dim_levels[i]));
 		}
 		leds.show();
 		
@@ -555,6 +528,11 @@ void wifi_scanning()
 	{
 		wifi_scans = 0;
 		wifi_create(wifi_my_id);
+		// give myself a color BEFORE going into candidate mode
+		uint32_t chosen_color = assignment_colors[random(COLORS_LENGTH)];
+		add_to_used(chosen_color);
+		my_color = chosen_color;
+
 		return;
 	}
 }
@@ -591,9 +569,9 @@ void wifi_candidate()
 		Serial.println();
 
 		// Parse this packet to see if it's a legit follower
-		const beacon_t * beacon = (const beacon_t*) buf;
+		const message_t * message = (const message_t*) buf;
 		// If we successfully took on a follower, transition to leader
-		if (parse_follower_packet(beacon, ip))
+		if (parse_follower_packet(message, ip))
 		{
 			Serial.println("going to leader mode");
 			wifi_mode = MODE_LEADER;
@@ -604,8 +582,8 @@ void wifi_candidate()
 	int now = millis();
 	if (now - last_beacon > BEACON_INTERVAL)
 	{
-		beacon_t beacon = {
-			MAGIC,
+		message_t message = {
+			BEACON_MAGIC,
 			wifi_my_id,
 			my_color
 		};
@@ -614,7 +592,7 @@ void wifi_candidate()
 		IPAddress bcast = WiFi.localIP();
 		bcast[3] = 255;
 		udp.beginPacket(bcast, UDP_PORT);
-		udp.write((const uint8_t*) &beacon, sizeof(beacon));
+		udp.write((const uint8_t*) &message, sizeof(message));
 		udp.endPacket();
 	 	Serial.println("sent beacon");
 	}
@@ -642,17 +620,20 @@ void wifi_follower()
 		Serial.println();
 
 		// parse the leader's packet
-		const beacon_t * beacon = (const beacon_t*) buf;
-		if (beacon->magic != MAGIC)
+		const message_t * message = (const message_t*) buf;
+		if (message->magic != BEACON_MAGIC && message->magic != ASSIGN_MAGIC)
 		{
 			Serial.println("unable to parse packet");
+		} else if (message->magic == ASSIGN_MAGIC) {
+			my_color = message->color;	
 		} else {
+			// assume it's a beacon
 			Serial.print("leader: ");
-			Serial.println(beacon->id);
+			Serial.println(message->id);
 
 			// Update follower state from beacon
-			follower_state.leader_id = beacon->id;
-			follower_state.leader_color = beacon->color;
+			follower_state.leader_id = message->id;
+			follower_state.leader_color = message->color;
 			follower_state.leader_beacon_ms = millis();
 		}
 	}
@@ -667,8 +648,8 @@ void wifi_follower()
 	// send our own beacon, if it's been a while
 	if (now - follower_state.my_beacon_ms > BEACON_INTERVAL)
 	{
-		beacon_t beacon = {
-			MAGIC,
+		message_t message = {
+			BEACON_MAGIC,
 			wifi_my_id,
 			my_color
 		};
@@ -677,7 +658,7 @@ void wifi_follower()
 		IPAddress leader = WiFi.localIP();
 		leader[3] = 1; // assume that the leader is also 192.168.x.1
 		udp.beginPacket(leader, UDP_PORT);
-		udp.write((const uint8_t *) &beacon, sizeof(beacon));
+		udp.write((const uint8_t *) &message, sizeof(message));
 		udp.endPacket();
 	}
 }
@@ -703,8 +684,8 @@ void wifi_leader()
 		Serial.println();
 
 		// parse the follower's packet
-		const beacon_t * beacon = (const beacon_t*) buf;
-		parse_follower_packet(beacon, ip);
+		const message_t * message = (const message_t*) buf;
+		parse_follower_packet(message, ip);
 	}
 
 	// If this is a new follower, send them a color assignment 
@@ -713,8 +694,8 @@ void wifi_leader()
 	int now = millis();
 	if (now - last_beacon > BEACON_INTERVAL)
 	{
-		beacon_t beacon = {
-			MAGIC,
+		message_t message = {
+			BEACON_MAGIC,
 			wifi_my_id,
 			my_color
 		};
@@ -723,7 +704,7 @@ void wifi_leader()
 		IPAddress bcast = WiFi.localIP();
 		bcast[3] = 255; 
 		udp.beginPacket(bcast, UDP_PORT);
-		udp.write((const uint8_t *) &beacon, sizeof(beacon));
+		udp.write((const uint8_t *) &message, sizeof(message));
 		udp.endPacket();
 	}
 
