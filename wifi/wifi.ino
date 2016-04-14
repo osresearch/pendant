@@ -168,10 +168,17 @@ void add_to_used(uint32_t color)
 {
 	for (int i = 0; i < COLORS_LENGTH; i++)
 	{
-		if (used_colors[i] != 0)
+		if (used_colors[i] == 0)
 		{
 			used_colors[i] = color;
+			Serial.print("adding new used color. array is now: ");
+			for (int i = 0; i < COLORS_LENGTH; i++)
+			{
+				Serial.println(used_colors[i]);
+			}
+			
 		} else {
+			// TODO - I'm getting this message
 			Serial.println("ERROR: The used_colors array was full when it should not be");	
 		}
 	}
@@ -195,6 +202,7 @@ followling_state_t* find_followling(uint32_t follower_id, IPAddress ip)
 	{
 		followling_state_t* f = &followlings[i];
 
+		// TODO - suspect this is getting triggered every time
 		// If the current followling is still around, skip to next slot
 		if (now - f->follower_beacon_ms < 60000) continue;	
 
@@ -274,6 +282,7 @@ boolean parse_follower_packet(const message_t* message, IPAddress ip)
 		// There was no space to put the new followling
 		if (!f)
 		{
+			//TODO - we're getting this message over and over
 			Serial.println("No free space in array for new followling");
 			return false;
 		}
