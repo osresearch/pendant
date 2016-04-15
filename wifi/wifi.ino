@@ -210,6 +210,10 @@ followling_state_t* find_followling(uint32_t follower_id, IPAddress ip)
 		// and send a color assignment to the follower.
 		f->follower_id = follower_id;
 
+		// Pick a color to assign to followling
+		f->follower_color = assignment_colors[random(COLORS_LENGTH)];
+
+#if 0
 		// Pick a random color and assign it this followlings' state
 		int again = 1;
 		while(again == 1) {
@@ -236,6 +240,7 @@ followling_state_t* find_followling(uint32_t follower_id, IPAddress ip)
 				}
 			}
 		}
+#endif
 
 		// now send out that color assignment to the follower
 		message_t message = {
