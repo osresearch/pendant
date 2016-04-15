@@ -109,6 +109,7 @@ followling_state_t followlings[MAX_FOLLOWLINGS];
 
 void setup()
 {
+	WiFi.persistent(false);
 	WiFi.mode(WIFI_STA);
 	//WiFi.begin(ssid, password);
 
@@ -489,9 +490,14 @@ void leader_pattern() {
  */
 void wifi_follow(int leader_id)
 {
+	Serial.println("In wifi_follow");
 	WiFi.mode(WIFI_STA);
 	String ssid = wifi_prefix + String(leader_id);
+	Serial.print("ssid: ");
+	Serial.print(ssid);
+	Serial.println("  ");
 	int rc = WiFi.begin(ssid.c_str());
+	Serial.println("After WiFi.begin()");
 
 	if (rc == WL_CONNECTED)
 	{
@@ -527,6 +533,7 @@ void wifi_create(int leader_id)
 void wifi_scanning()
 {
 	int min_leader = rescan_network();
+
 	if (min_leader == 0)
 		return;
 
