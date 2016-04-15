@@ -168,20 +168,20 @@ void add_to_used(uint32_t color)
 {
 	for (int i = 0; i < COLORS_LENGTH; i++)
 	{
-		if (used_colors[i] == 0)
+		if (used_colors[i] != 0)
 		{
-			used_colors[i] = color;
-			Serial.print("adding new used color. array is now: ");
-			for (int i = 0; i < COLORS_LENGTH; i++)
-			{
-				Serial.println(used_colors[i]);
-			}
-			
-		} else {
-			// TODO - I'm getting this message
-			Serial.println("ERROR: The used_colors array was full when it should not be");	
+			continue;
 		}
+		used_colors[i] = color;
+		Serial.print("adding new used color. array is now: ");
+		for (int i = 0; i < COLORS_LENGTH; i++)
+		{
+			Serial.println(used_colors[i]);
+		}
+		return;	
 	}
+	// TODO - I'm getting this message
+	Serial.println("ERROR: The used_colors array was full when it should not be");	
 }
 
 // Takes a pointer to a struct that is formed from the
@@ -212,14 +212,14 @@ followling_state_t* find_followling(uint32_t follower_id, IPAddress ip)
 
 		// Pick a random color and assign it this followlings' state
 		int again = 1;
-		while(again = 1) {
+		while(again == 1) {
 			uint32_t potential_color = assignment_colors[random(COLORS_LENGTH)];
 			empty_used_if_full();
 		
+			int tried = 0;
 			// if used, add to used array and try another
 			for (int i = 0; i < COLORS_LENGTH; i++)
 			{
-				int tried = 0;
 				if (potential_color == used_colors[i])
 				{
 					break;	
