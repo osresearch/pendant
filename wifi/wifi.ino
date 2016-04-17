@@ -48,6 +48,8 @@ int wifi_my_id;
 uint32_t my_color;
 int wifi_mode = 0; // scanning, joined, leader
 
+uint32_t last_draw_time; // when LEDs were last displayed
+
 // Possible colors that leader can assign to followers
 uint32_t assignment_colors[] = {
 	leds.Color(255, 20, 0),
@@ -188,7 +190,7 @@ void add_to_used(uint32_t color)
 // Takes a pointer to a struct that is formed from the
 // incoming beacon, and use that to create the new followling entry
 // if the followling is not already in the array.
-followling_state_t* find_followling(uint32_t follower_id, IPAddress ip)
+static followling_state_t* find_followling(uint32_t follower_id, IPAddress ip)
 {
 	// if the followling is already in the array, return a ref to it
 	for (int i = 0; i < MAX_FOLLOWLINGS; i++)
@@ -407,6 +409,12 @@ void scanning_pattern()
 
 void candidate_pattern()
 {
+	uint32_t now = millis();
+
+	if (now - last_draw_time < 100) {
+		return;
+	}
+
 	int brightness = 256 - (millis() - last_beacon) / 4;
 	if (brightness < 0)
 		brightness = 0;
@@ -416,11 +424,17 @@ void candidate_pattern()
 		leds.setPixelColor(i, color);
 	}
 	leds.show();
+	last_draw_time = now;
 }
 
 void follower_pattern()
 {
 	uint32_t now = millis();
+
+	if (now - last_draw_time < 30) {
+		return;
+	}
+
 	uint32_t leader_color = follower_state.leader_color;
 	int lead_beacon_age = now - follower_state.leader_beacon_ms;
 	int my_beacon_age = now - follower_state.my_beacon_ms;
@@ -443,12 +457,18 @@ void follower_pattern()
 		leds.setPixelColor(i, leader_color);
 	leds.show();
 
+	last_draw_time = now;
+
 	// delay so the pixels don't get flickery
 	delay(10);
 }
 
 void leader_pattern() {
 	uint32_t now = millis();
+
+	if (now - last_draw_time < 100) {
+		return;
+	}
 
 	// solid self color
 	int self_color = rgb_dim(my_color, 255);
@@ -477,12 +497,14 @@ void leader_pattern() {
 			// this index is empty or has a lost follower
 			leds.setPixelColor(i+2, s_color); // use self-color		
 		}
+
 	}
 
 	for (int i = next_led; i < NUM_PIXELS; i++) {
 		leds.setPixelColor(i, s_color);
 	}
 	leds.show();
+	last_draw_time = now;
 }
 
 /*
