@@ -7717,27 +7717,8 @@ Some male, some female. Watch your step!</description>
 <net name="N$1" class="0">
 <segment>
 <pinref part="R1" gate="G$1" pin="2"/>
-<pinref part="R3" gate="G$1" pin="1"/>
-<wire x1="124.46" y1="68.58" x2="124.46" y2="63.5" width="0.1524" layer="91"/>
 <wire x1="132.08" y1="63.5" x2="124.46" y2="63.5" width="0.1524" layer="91"/>
 <pinref part="JP1" gate="G$1" pin="D+"/>
-<junction x="124.46" y="63.5"/>
-</segment>
-</net>
-<net name="D+" class="0">
-<segment>
-<pinref part="R1" gate="G$1" pin="1"/>
-<pinref part="IC1" gate="G$1" pin="(CLOCK)PB3"/>
-<wire x1="91.44" y1="63.5" x2="114.3" y2="63.5" width="0.1524" layer="91"/>
-<label x="96.52" y="63.5" size="1.778" layer="95"/>
-</segment>
-</net>
-<net name="D-" class="0">
-<segment>
-<pinref part="IC1" gate="G$1" pin="PB4"/>
-<wire x1="91.44" y1="66.04" x2="104.14" y2="66.04" width="0.1524" layer="91"/>
-<pinref part="R2" gate="G$1" pin="1"/>
-<label x="96.52" y="66.04" size="1.778" layer="95"/>
 </segment>
 </net>
 <net name="GND" class="0">
@@ -7878,8 +7859,12 @@ Some male, some female. Watch your step!</description>
 <net name="N$2" class="0">
 <segment>
 <pinref part="R2" gate="G$1" pin="2"/>
-<wire x1="114.3" y1="66.04" x2="132.08" y2="66.04" width="0.1524" layer="91"/>
+<wire x1="114.3" y1="66.04" x2="124.46" y2="66.04" width="0.1524" layer="91"/>
 <pinref part="JP1" gate="G$1" pin="D-"/>
+<pinref part="R3" gate="G$1" pin="1"/>
+<wire x1="124.46" y1="66.04" x2="132.08" y2="66.04" width="0.1524" layer="91"/>
+<wire x1="124.46" y1="66.04" x2="124.46" y2="68.58" width="0.1524" layer="91"/>
+<junction x="124.46" y="66.04"/>
 </segment>
 </net>
 <net name="N$6" class="0">
@@ -8029,6 +8014,24 @@ Some male, some female. Watch your step!</description>
 <junction x="177.8" y="139.7"/>
 <junction x="177.8" y="124.46"/>
 <junction x="177.8" y="111.76"/>
+</segment>
+</net>
+<net name="N$3" class="0">
+<segment>
+<pinref part="R1" gate="G$1" pin="1"/>
+<wire x1="114.3" y1="63.5" x2="101.6" y2="63.5" width="0.1524" layer="91"/>
+<wire x1="101.6" y1="63.5" x2="96.52" y2="66.04" width="0.1524" layer="91"/>
+<pinref part="IC1" gate="G$1" pin="PB4"/>
+<wire x1="96.52" y1="66.04" x2="91.44" y2="66.04" width="0.1524" layer="91"/>
+</segment>
+</net>
+<net name="N$4" class="0">
+<segment>
+<pinref part="IC1" gate="G$1" pin="(CLOCK)PB3"/>
+<wire x1="91.44" y1="63.5" x2="96.52" y2="63.5" width="0.1524" layer="91"/>
+<wire x1="96.52" y1="63.5" x2="99.06" y2="66.04" width="0.1524" layer="91"/>
+<pinref part="R2" gate="G$1" pin="1"/>
+<wire x1="99.06" y1="66.04" x2="104.14" y2="66.04" width="0.1524" layer="91"/>
 </segment>
 </net>
 </nets>
