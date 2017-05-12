@@ -7628,9 +7628,9 @@ Some male, some female. Watch your step!</description>
 </classes>
 <parts>
 <part name="IC1" library="atmel" deviceset="TINY22" device="S"/>
-<part name="R1" library="resistor" deviceset="R-US_" device="R0603"/>
-<part name="R2" library="resistor" deviceset="R-US_" device="R0603"/>
-<part name="R3" library="resistor" deviceset="R-US_" device="R0603"/>
+<part name="R1" library="resistor" deviceset="R-US_" device="R0603" value="68"/>
+<part name="R2" library="resistor" deviceset="R-US_" device="R0603" value="68"/>
+<part name="R3" library="resistor" deviceset="R-US_" device="R0603" value="1.0k"/>
 <part name="GND1" library="supply1" deviceset="GND" device=""/>
 <part name="GND8" library="supply1" deviceset="GND" device=""/>
 <part name="+3V1" library="supply1" deviceset="+3V3" device=""/>
