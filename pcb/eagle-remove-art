@@ -1,0 +1,23 @@
+#!/usr/bin/perl
+# Strip all the rectangles
+# <rectangle x1="3.52551875" y1="21.05025" x2="3.90398125" y2="21.11375" layer="29"/>
+use warnings;
+use strict;
+my $dpi = 25.4 / 400;
+my $eps = 0.01;
+
+while(<>)
+{
+	my ($y1,$y2) = /^<rectangle\s.*y1="(-?[\d.]+)"\s.*y2="(-?[\d.]+)"/
+		or print and next;
+
+	my $delta = $y2 - $y1;
+	if ($dpi - $eps < $delta and $delta < $dpi + $eps)
+	{
+		# one to be skipped
+		warn "$_";
+	} else {
+		# print if the rectangle doesn't match the DPI
+		print;
+	}
+}
