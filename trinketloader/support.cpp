@@ -26,7 +26,7 @@ byte hexton (byte h)
     return(h - '0');
   if (h >= 'A' && h <= 'F')
     return((h - 'A') + 10);
-  error("Bad hex digit!");
+  fatal("Bad hex digit!");
 }
 
 /*

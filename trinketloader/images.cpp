@@ -1,6 +1,6 @@
 #include "optiLoader.h"
 
-image_t PROGMEM image_328 = {
+const image_t PROGMEM image_328 = {
     {"blankfull.hex"},
     {"attiny85"},
     0x930B,				/* Signature bytes for attimny85 */
@@ -198,8 +198,8 @@ image_t PROGMEM image_328 = {
 /*
  * Table of defined images
  */
-image_t *images[] = {
+const image_t * const images[] = {
   &image_328,
 };
 
-uint8_t NUMIMAGES = sizeof(images)/sizeof(images[0]);
+const uint8_t NUMIMAGES = sizeof(images)/sizeof(images[0]);

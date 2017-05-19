@@ -8,13 +8,7 @@
 // Press button to program a new chip. Piezo beeper for error/success 
 // This is ideal for very fast mass-programming of chips!
 //
-// It is based on AVRISP
-//
-// using the following pins:
-// 10: slave reset
-// 11: MOSI
-// 12: MISO
-// 13: SCK
+// It is based on AVRISP and uses the hardware SPI pins
 
 
 #include "optiLoader.h"
@@ -26,15 +20,28 @@ byte pageBuffer[128];		       /* One page of flash */
 
 
 /*
- * Pins to target
+ * Pins to target for a teensy
  */
-#define SCK 13
-#define MISO 12
-#define MOSI 11
+#define SCK 1
+#define MISO 3
+#define MOSI 2
 #define RESET 10
-#define CLOCK 9     // self-generate 8mhz clock - handy
+#define CLOCK 4     // self-generate 8mhz clock - handy, but not used?
 
-#define BUTTON 10
+#define BUTTON 14
+
+void __attribute__((__noreturn__)) fatal(const char *string)
+{ 
+  Serial.println(string); 
+  digitalWrite(LED_PROGMODE, 0);
+  digitalWrite(LED_ERR, 1);
+  
+  while(1) {
+    //tone(PIEZOPIN, 4000, 500);
+  }
+
+}
+
 
 void setup () {
   Serial.begin(115200);			/* Initialize serial for status msgs */
@@ -46,11 +53,22 @@ void loop (void) {
   digitalWrite(BUTTON, HIGH); // pullup
   delay(10);
  
+  pinMode(LED_PROGMODE, OUTPUT);
+  pinMode(LED_ERR, OUTPUT);
+  analogWrite(LED_PROGMODE, 0);
+  digitalWrite(LED_ERR, 0);
+
   Serial.println("\nType 'G' or hit BUTTON for next chip");
+  uint8_t bright = 0;
   while (1) {
+    analogWrite(LED_PROGMODE, bright < 128 ? bright : 255 - bright);
+    bright++;
     if  ((! digitalRead(BUTTON)) || (Serial.read() == 'G'))
       break;  
+    delay(10);
   }
+  analogWrite(LED_PROGMODE, 0);
+
   while (!digitalRead(BUTTON)) {
     delay(10);
   }
@@ -59,33 +77,35 @@ void loop (void) {
   target_poweron();			/* Turn on target power */
 
   uint16_t signature;
-  image_t *targetimage;
+  const image_t *targetimage;
         
   if (! (signature = readSignature()))		// Figure out what kind of CPU
-    error("Signature fail");
+    fatal("Signature fail");
   if (! (targetimage = findImage(signature)))	// look for an image
-    error("Image fail");
+    fatal("Image fail");
   
   eraseChip();
 
   if (! programFuses(targetimage->image_progfuses))	// get fuses ready to program
-    error("Programming Fuses fail");
+    fatal("Programming Fuses fail");
   
+/*
   if (! verifyFuses(targetimage->image_progfuses, targetimage->fusemask) ) {
-    error("Failed to verify fuses");
+    fatal("Failed to verify fuses");
   } 
+*/
 
   end_pmode();
   start_pmode();
 
-  byte *hextext = targetimage->image_hexcode;  
+  const byte *hextext = targetimage->image_hexcode;  
   uint16_t pageaddr = 0;
   uint8_t pagesize = pgm_read_byte(&targetimage->image_pagesize);
   uint16_t chipsize = pgm_read_word(&targetimage->chipsize);
         
   //Serial.println(chipsize, DEC);
   while (pageaddr < chipsize) {
-     byte *hextextpos = readImagePage (hextext, pageaddr, pagesize, pageBuffer);
+     const byte *hextextpos = readImagePage (hextext, pageaddr, pagesize, pageBuffer);
           
      boolean blankpage = true;
      for (uint8_t i=0; i<pagesize; i++) {
@@ -93,7 +113,7 @@ void loop (void) {
      }          
      if (! blankpage) {
        if (! flashPage(pageBuffer, pageaddr, pagesize))	
-	 error("Flash programming failed");
+	 fatal("Flash programming failed");
      }
      hextext = hextextpos;
      pageaddr += pagesize;
@@ -101,20 +121,20 @@ void loop (void) {
   
   // Set fuses to 'final' state
   if (! programFuses(targetimage->image_normfuses))
-    error("Programming Fuses fail");
+    fatal("Programming Fuses fail");
     
   end_pmode();
   start_pmode();
   
   Serial.println(F("\nVerifing flash..."));
   if (! verifyImage(targetimage->image_hexcode) ) {
-    error("Failed to verify chip");
+    fatal("Failed to verify chip");
   } else {
     Serial.println(F("\tFlash verified correctly!"));
   }
 
   if (! verifyFuses(targetimage->image_normfuses, targetimage->fusemask) ) {
-    error("Failed to verify fuses");
+    fatal("Failed to verify fuses");
   } else {
     Serial.println(F("Fuses verified correctly!"));
   }
@@ -126,17 +146,8 @@ void loop (void) {
 }
 
 
-void error(char *string) { 
-  Serial.println(string); 
-  
-  while(1) {
-    //tone(PIEZOPIN, 4000, 500);
-  }
-
-}
-
 void start_pmode () {
-  pinMode(13, INPUT); // restore to default
+  pinMode(SCK, INPUT); // restore to default
 
   SPI.begin();
   SPI.setClockDivider(SPI_CLOCK_DIV128); 
@@ -195,8 +206,3 @@ boolean target_poweroff ()
   digitalWrite(LED_PROGMODE, LOW);
   return true;
 }
-
-
-
-
-

@@ -16,7 +16,7 @@
 #define CLOCKSPEED_FLASH   SPI_CLOCK_DIV8
 
 #define LED_ERR 8
-#define LED_PROGMODE 7
+#define LED_PROGMODE 9
 
 typedef struct image {
     char image_name[30];	       /* Ie "optiboot_diecimila.hex" */
@@ -36,9 +36,21 @@ typedef struct alias {
   image_t * alias_image;
 } alias_t;
 
+/*
+ * Bootload images.
+ * These are the intel Hex files produced by the optiboot makefile,
+ * with a small amount of automatic editing to turn them into C strings,
+ * and a header attched to identify them
+ */
+
+extern const image_t * const images[];
+extern const uint8_t NUMIMAGES;
+
+
 // Useful message printing definitions
 
 #define debug(string) // flashprint(PSTR(string));
+extern void __attribute__((__noreturn__)) fatal(const char *string);
 
 
 void pulse (int pin, int times);
@@ -46,17 +58,17 @@ void flashprint (const char p[]);
 
 
 uint16_t spi_transaction (uint8_t a, uint8_t b, uint8_t c, uint8_t d);
-image_t *findImage (uint16_t signature);
+const image_t *findImage (uint16_t signature);
 
 
 uint16_t readSignature (void);
 boolean programFuses (const byte *fuses);
 void eraseChip(void);
-boolean verifyImage (byte *hextext);
+boolean verifyImage (const byte *hextext);
 void busyWait(void);
-boolean flashPage (byte *pagebuff, uint16_t pageaddr, uint8_t pagesize);
+boolean flashPage (const byte *pagebuff, uint16_t pageaddr, uint8_t pagesize);
 byte hexton (byte h);
-byte * readImagePage (byte *hextext, uint16_t pageaddr, uint8_t pagesize, byte *page);
+const byte * readImagePage (const byte *hextext, uint16_t pageaddr, uint8_t pagesize, byte *page);
 boolean verifyFuses (const byte *fuses, const byte *fusemask);
 void error(char *string);
 

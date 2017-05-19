@@ -2,16 +2,6 @@
 #define VERBOSE 0
 
 /*
- * Bootload images.
- * These are the intel Hex files produced by the optiboot makefile,
- * with a small amount of automatic editing to turn them into C strings,
- * and a header attched to identify them
- */
-
-extern image_t *images[];
-extern uint8_t NUMIMAGES;
-
-/*
  * readSignature
  * read the bottom two signature bytes (if possible) and return them
  * Note that the highest signature byte is the same over all AVRs so we skip it
@@ -44,10 +34,11 @@ uint16_t readSignature (void)
  * search the hex images that we have programmed in flash, looking for one
  * that matches.
  */
-image_t *findImage (uint16_t signature)
+const image_t *findImage (uint16_t signature)
 {
-  image_t *ip;
-  Serial.println("Searching for image...");
+  const image_t *ip;
+  Serial.print("Searching for image: ");
+  Serial.println(signature, HEX);
 
   for (byte i=0; i < NUMIMAGES; i++) {
     ip = images[i];
@@ -86,21 +77,21 @@ boolean programFuses (const byte *fuses)
   }
   f = pgm_read_byte(&fuses[FUSE_LOW]);
   if (f) {
-    Serial.print("  Set Low Fuse to: ");
+    Serial.print("\n  Set Low Fuse to: ");
     Serial.print(f, HEX);
     Serial.print(" -> ");
     Serial.print(spi_transaction(0xAC, 0xA0, 0x00, f), HEX);
   }
   f = pgm_read_byte(&fuses[FUSE_HIGH]);
   if (f) {
-    Serial.print("  Set High Fuse to: ");
+    Serial.print("\n  Set High Fuse to: ");
     Serial.print(f, HEX);
     Serial.print(" -> ");
     Serial.print(spi_transaction(0xAC, 0xA8, 0x00, f), HEX);
   }
   f = pgm_read_byte(&fuses[FUSE_EXT]);
   if (f) {
-    Serial.print("  Set Ext Fuse to: ");
+    Serial.print("\n  Set Ext Fuse to: ");
     Serial.print(f, HEX);
     Serial.print(" -> ");
     Serial.print(spi_transaction(0xAC, 0xA4, 0x00, f), HEX);
@@ -163,13 +154,12 @@ boolean verifyFuses (const byte *fuses, const byte *fusemask)
 */
 
 // Returns number of bytes decoded
-byte * readImagePage (byte *hextext, uint16_t pageaddr, uint8_t pagesize, byte *page)
+const byte * readImagePage (const byte *hextext, uint16_t pageaddr, uint8_t pagesize, byte *page)
 {
   
-  boolean firstline = true;
   uint16_t len;
   uint8_t page_idx = 0;
-  byte *beginning = hextext;
+  const byte *beginning = hextext;
   
   byte b, cksum = 0;
 
@@ -184,7 +174,7 @@ byte * readImagePage (byte *hextext, uint16_t pageaddr, uint8_t pagesize, byte *
     
       // read one line!
     if (pgm_read_byte(hextext++) != ':') {
-      error("No colon?");
+      fatal("No colon?");
       break;
     }
     // Read the byte count into 'len'
@@ -235,7 +225,7 @@ byte * readImagePage (byte *hextext, uint16_t pageaddr, uint8_t pagesize, byte *
       page_idx++;
 
       if (page_idx > pagesize) {
-          error("Too much code");
+          fatal("Too much code");
 	  break;
       }
     }
@@ -243,11 +233,11 @@ byte * readImagePage (byte *hextext, uint16_t pageaddr, uint8_t pagesize, byte *
     b = (b<<4) + hexton(pgm_read_byte(hextext++));
     cksum += b;
     if (cksum != 0) {
-      error("Bad checksum: ");
+      fatal("Bad checksum: ");
       Serial.print(cksum, HEX);
     }
     if (pgm_read_byte(hextext++) != '\n') {
-      error("No end of line");
+      fatal("No end of line");
       break;
     }
 #if VERBOSE
@@ -276,7 +266,7 @@ void flashWord (uint8_t hilo, uint16_t addr, uint8_t data) {
 }
 
 // Basically, write the pagebuff (with pagesize bytes in it) into page $pageaddr
-boolean flashPage (byte *pagebuff, uint16_t pageaddr, uint8_t pagesize) {  
+boolean flashPage (const byte *pagebuff, uint16_t pageaddr, uint8_t pagesize) {  
   SPI.setClockDivider(CLOCKSPEED_FLASH); 
 
 #if VERBOSE
@@ -313,9 +303,7 @@ boolean flashPage (byte *pagebuff, uint16_t pageaddr, uint8_t pagesize) {
 // verifyImage does a byte-by-byte verify of the flash hex against the chip
 // Thankfully this does not have to be done by pages!
 // returns true if the image is the same as the hextext, returns false on any error
-boolean verifyImage (byte *hextext)  {
-  uint16_t address = 0;
-  
+boolean verifyImage (const byte *hextext)  {
   SPI.setClockDivider(CLOCKSPEED_FLASH); 
 
   uint16_t len;
@@ -326,7 +314,7 @@ boolean verifyImage (byte *hextext)  {
     
       // read one line!
     if (pgm_read_byte(hextext++) != ':') {
-      error("No colon");
+      fatal("No colon");
       return false;
     }
     len = hexton(pgm_read_byte(hextext++));
@@ -391,12 +379,12 @@ boolean verifyImage (byte *hextext)  {
     b = (b<<4) + hexton(pgm_read_byte(hextext++));
     cksum += b;
     if (cksum != 0) {
-      error("Bad checksum: ");
+      fatal("Bad checksum: ");
       Serial.print(cksum, HEX);
       return false;
     }
     if (pgm_read_byte(hextext++) != '\n') {
-      error("No end of line");
+      fatal("No end of line");
       return false;
     }
   }
@@ -427,11 +415,21 @@ void busyWait(void)  {
  * Functions specific to ISP programming of an AVR
  */
 uint16_t spi_transaction (uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
-  uint8_t n, m;
-  SPI.transfer(a); 
-  n = SPI.transfer(b);
-  //if (n != a) error = -1;
-  m = SPI.transfer(c);
-  return 0xFFFFFF & ((n<<16)+(m<<8) + SPI.transfer(d));
-}
 
+  SPI.transfer(a); 
+Serial.print("SPI tx "); Serial.println(a, HEX);
+
+  uint32_t x = SPI.transfer(b);
+Serial.print("SPI tx "); Serial.print(b, HEX);
+Serial.print(" rx "); Serial.println(x, HEX);
+
+  uint32_t y = SPI.transfer(c);
+Serial.print("SPI tx "); Serial.print(c, HEX);
+Serial.print(" rx "); Serial.println(y, HEX);
+
+  uint32_t z = SPI.transfer(d);
+Serial.print("SPI tx "); Serial.print(d, HEX);
+Serial.print(" rx "); Serial.println(z, HEX);
+
+  return 0xFFFFFF & ((x<<16) + (y<<8) + (z<<0));
+}
