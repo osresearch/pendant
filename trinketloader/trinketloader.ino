@@ -142,7 +142,17 @@ void loop (void) {
 
   Serial.println("*OK!*");
 
-  while (1);
+  while (1)
+  {
+    digitalWrite(LED_PROGMODE, HIGH);
+    delay(250);
+    digitalWrite(LED_PROGMODE, LOW);
+    delay(250);
+    digitalWrite(LED_PROGMODE, HIGH);
+    delay(250);
+    digitalWrite(LED_PROGMODE, LOW);
+    delay(500);
+  }
 }
 
 
