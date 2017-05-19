@@ -51,7 +51,7 @@ void setup()
 	off();
 }
 
-#define NUM_LEDS 12 // Maximum with 3 output pins
+#define NUM_LEDS 12 // Maximum with 4 output pins
 
 #define CHARLIE(pin_vcc, pin_gnd) \
 	{ 1 << (pin_vcc), 1 << (pin_gnd) }
@@ -198,7 +198,6 @@ chase2()
 }
 
 
-static
 void twinkle()
 {
 	while (random(10000) > 1)
@@ -215,7 +214,6 @@ void twinkle()
 	}
 }
 
-static
 void soft_twinkle()
 {
 	const uint8_t min = 8;
@@ -326,7 +324,9 @@ chase_smooth()
 
 void loop()
 {
-if(0)
+while(1)
+	chase1();
+if(1)
 {
 	chase2();
 	twinkle();
