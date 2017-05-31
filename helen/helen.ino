@@ -9,6 +9,8 @@
 
 #include <avr/power.h>
 #include <avr/sleep.h>
+
+#if 0
 #include <avr/wdt.h>
 
 ISR(WDT_vect)
@@ -40,36 +42,22 @@ deep_sleep()
 
 	//power_all_enable();
 }
+#endif
 
 
 
 void setup()
 {
 	// switch the clock sel to 1/4, which should be 2 MHz.
+#if 0
 	CLKPR = 0x80;
 	CLKPR = 0x02; // clk/4
+#endif
 	off();
 }
 
 #define NUM_LEDS 12 // Maximum with 4 output pins
-
-#define CHARLIE(pin_vcc, pin_gnd) \
-	{ 1 << (pin_vcc), 1 << (pin_gnd) }
-
-static const uint8_t mux[NUM_LEDS][2] = {
-	CHARLIE(1,2),
-	CHARLIE(2,1),
-	CHARLIE(0,1),
-	CHARLIE(1,0),
-	CHARLIE(4,1),
-	CHARLIE(1,4),
-	CHARLIE(0,4),
-	CHARLIE(4,0),
-	CHARLIE(2,0),
-	CHARLIE(0,2),
-	CHARLIE(4,2),
-	CHARLIE(2,4),
-};
+//#define NUM_LEDS 6 // Maximum with 3 output pins
 
 void off()
 {
@@ -77,15 +65,35 @@ void off()
 	PORTB = 0;
 }
 
-void on(int n)
+static inline void _on(const uint8_t vcc, const uint8_t gnd, const uint8_t state)
 {
-	uint8_t vcc = mux[n][0];
-	uint8_t gnd = mux[n][1];
-  
-	// turn both to output
-	PORTB = 0;
-	DDRB = vcc | gnd;
-	PORTB = vcc;
+	if (state)
+	{
+		DDRB = vcc | gnd;
+		PORTB = vcc;
+	} else {
+		off();
+	}
+}
+
+void led(const uint8_t n, const uint8_t state)
+{
+	switch(n)
+	{
+	case 0: _on(0x01, 0x02, state); break;
+	case 1: _on(0x01, 0x04, state); break;
+	case 2: _on(0x01, 0x20, state); break;
+	case 3: _on(0x02, 0x01, state); break;
+	case 4: _on(0x02, 0x04, state); break;
+	case 5: _on(0x02, 0x20, state); break;
+	case 6: _on(0x04, 0x01, state); break;
+	case 7: _on(0x04, 0x02, state); break;
+	case 8: _on(0x04, 0x20, state); break;
+	case 9: _on(0x20, 0x01, state); break;
+	case 10: _on(0x20, 0x02, state); break;
+	case 11: _on(0x20, 0x04, state); break;
+	default: off(); break;
+	}
 }
 
 static uint8_t fb[NUM_LEDS];
@@ -93,15 +101,22 @@ static uint8_t fb[NUM_LEDS];
 
 void draw()
 {
-	for(uint8_t i = 0 ; i < 255 ; i++)
+	for(uint8_t i = 0 ; i < 255-8 ; i += 1)
 	{
-		for (uint8_t j = 0 ; j < NUM_LEDS ; j++)
-		{
-			if (fb[j] > i)
-				on(j);
-			else
-				off();
-		}
+		led(0, fb[0] > i);
+		led(1, fb[1] > i);
+		led(2, fb[2] > i);
+		led(3, fb[3] > i);
+		led(4, fb[4] > i);
+		led(5, fb[5] > i);
+#if NUM_LEDS >= 12
+		led(6, fb[6] > i);
+		led(7, fb[7] > i);
+		led(8, fb[8] > i);
+		led(9, fb[9] > i);
+		led(10, fb[10] > i);
+		led(11, fb[11] > i);
+#endif
 	}
 }
 
@@ -321,13 +336,33 @@ chase_smooth()
 	}
 }
 
+// simple binary on/off
+void chase0()
+{
+	led(0, 1); delay(80);
+	led(1, 1); delay(80);
+	led(2, 1); delay(80);
+	led(3, 1); delay(80);
+	led(4, 1); delay(80);
+	led(5, 1); delay(80);
+	led(6, 1); delay(80);
+	led(7, 1); delay(80);
+	led(8, 1); delay(80);
+	led(9, 1); delay(80);
+	led(10, 1); delay(80);
+	led(11, 1); delay(80);
+	off();
+	delay(500);
+}
 
 void loop()
 {
-while(1)
-	chase1();
-if(1)
+	while(1)
+		chase2();
+
+if(0)
 {
+	chase1();
 	chase2();
 	twinkle();
 	chase_smooth();
