@@ -2,9 +2,15 @@
  * HELEN board charlieplexing setup.
  *
  * This sketch uses Charlieplexing with four digital output pins
- * on the HELEN board to drive 12 LEDs with PWM.
+ * on the HELEN board to drive 6, 12 or 20 LEDs with PWM.
+ * Note that with 20 LEDs you can't use USB.
  *
- * More info: https://trmm.net/HELEN and  https://trmm.net/Charlieplex
+ * More info:
+ *
+ * https://trmm.net/HELEN
+ * https://trmm.net/Charlieplex
+ * https://trmm.net/PCB_Art
+ * https://trmm.net/Catalan_PCB
  */
 
 #include <avr/power.h>
@@ -53,10 +59,15 @@ void setup()
 	CLKPR = 0x80;
 	CLKPR = 0x02; // clk/4
 #endif
+
+	// disable any pin change interrupts that v-usb has enabled
+	PCMSK = 0;
+
 	off();
 }
 
-#define NUM_LEDS 12 // Maximum with 4 output pins
+#define NUM_LEDS 20 // Maximum with 5 output pins
+//#define NUM_LEDS 12 // Maximum with 4 output pins
 //#define NUM_LEDS 6 // Maximum with 3 output pins
 
 void off()
@@ -69,8 +80,8 @@ static inline void _on(const uint8_t vcc, const uint8_t gnd, const uint8_t state
 {
 	if (state)
 	{
-		DDRB = vcc | gnd;
-		PORTB = vcc;
+		DDRB = (1 << vcc) | (1 << gnd);
+		PORTB = (1 << vcc);
 	} else {
 		off();
 	}
@@ -80,18 +91,26 @@ void led(const uint8_t n, const uint8_t state)
 {
 	switch(n)
 	{
-	case 0: _on(0x01, 0x02, state); break;
-	case 1: _on(0x01, 0x04, state); break;
-	case 2: _on(0x01, 0x20, state); break;
-	case 3: _on(0x02, 0x01, state); break;
-	case 4: _on(0x02, 0x04, state); break;
-	case 5: _on(0x02, 0x20, state); break;
-	case 6: _on(0x04, 0x01, state); break;
-	case 7: _on(0x04, 0x02, state); break;
-	case 8: _on(0x04, 0x20, state); break;
-	case 9: _on(0x20, 0x01, state); break;
-	case 10: _on(0x20, 0x02, state); break;
-	case 11: _on(0x20, 0x04, state); break;
+	case 0: _on(0, 1, state); break;
+	case 1: _on(0, 2, state); break;
+	case 2: _on(0, 5, state); break;
+	case 3: _on(1, 0, state); break;
+	case 4: _on(1, 2, state); break;
+	case 5: _on(1, 5, state); break;
+	case 6: _on(2, 0, state); break;
+	case 7: _on(2, 1, state); break;
+	case 8: _on(2, 5, state); break;
+	case 9: _on(5, 0, state); break;
+	case 10: _on(5, 1, state); break;
+	case 11: _on(5, 2, state); break;
+	case 12: _on(0, 4, state); break;
+	case 13: _on(1, 4, state); break;
+	case 14: _on(2, 4, state); break;
+	case 15: _on(5, 4, state); break;
+	case 16: _on(4, 0, state); break;
+	case 17: _on(4, 1, state); break;
+	case 18: _on(4, 2, state); break;
+	case 19: _on(4, 5, state); break;
 	default: off(); break;
 	}
 }
@@ -101,7 +120,7 @@ static uint8_t fb[NUM_LEDS];
 
 void draw()
 {
-	for(uint8_t i = 0 ; i < 255-8 ; i += 1)
+	for(uint8_t i = 0 ; i < 255-8 ; i += 8)
 	{
 		led(0, fb[0] > i);
 		led(1, fb[1] > i);
@@ -109,13 +128,23 @@ void draw()
 		led(3, fb[3] > i);
 		led(4, fb[4] > i);
 		led(5, fb[5] > i);
-#if NUM_LEDS >= 12
+#if NUM_LEDS > 6
 		led(6, fb[6] > i);
 		led(7, fb[7] > i);
 		led(8, fb[8] > i);
 		led(9, fb[9] > i);
 		led(10, fb[10] > i);
 		led(11, fb[11] > i);
+#if NUM_LEDS > 12
+		led(12, fb[12] > i);
+		led(13, fb[13] > i);
+		led(14, fb[14] > i);
+		led(15, fb[15] > i);
+		led(16, fb[16] > i);
+		led(17, fb[17] > i);
+		led(18, fb[18] > i);
+		led(19, fb[19] > i);
+#endif
 #endif
 	}
 }
@@ -339,18 +368,33 @@ chase_smooth()
 // simple binary on/off
 void chase0()
 {
-	led(0, 1); delay(80);
-	led(1, 1); delay(80);
-	led(2, 1); delay(80);
-	led(3, 1); delay(80);
-	led(4, 1); delay(80);
-	led(5, 1); delay(80);
-	led(6, 1); delay(80);
-	led(7, 1); delay(80);
-	led(8, 1); delay(80);
-	led(9, 1); delay(80);
-	led(10, 1); delay(80);
-	led(11, 1); delay(80);
+	const int delay_ms = 200;
+	led(0, 1); delay(delay_ms);
+	led(1, 1); delay(delay_ms);
+	led(2, 1); delay(delay_ms);
+	led(3, 1); delay(delay_ms);
+	led(4, 1); delay(delay_ms);
+	led(5, 1); delay(delay_ms);
+#if NUM_LEDS > 6
+	led(6, 1); delay(delay_ms);
+	led(7, 1); delay(delay_ms);
+	led(8, 1); delay(delay_ms);
+	led(9, 1); delay(delay_ms);
+	led(10, 1); delay(delay_ms);
+	led(11, 1); delay(delay_ms);
+#if NUM_LEDS > 12
+	led(12, 1); delay(delay_ms);
+	led(13, 1); delay(delay_ms);
+	led(14, 1); delay(delay_ms);
+	led(15, 1); delay(delay_ms);
+	led(16, 1); delay(delay_ms);
+	led(17, 1); delay(delay_ms);
+	led(18, 1); delay(delay_ms);
+	led(19, 1); delay(delay_ms);
+#endif
+#endif
+	off();
+	led(0, 1); delay(500);
 	off();
 	delay(500);
 }
